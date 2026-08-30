@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Custom terminal and scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #09090b;
+}
+::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
+}
+
+/* Lightweight Prism Code Highlighting Dark Theme */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: #71717a;
+  font-style: italic;
+}
+
+.token.punctuation {
+  color: #a1a1aa;
+}
+
+.token.namespace {
+  opacity: 0.7;
+}
+
+.token.property,
+.token.tag,
+.token.constant,
+.token.symbol,
+.token.deleted {
+  color: #f87171;
+}
+
+.token.boolean,
+.token.number {
+  color: #fbbf24;
+}
+
+.token.selector,
+.token.attr-name,
+.token.string,
+.token.char,
+.token.builtin,
+.token.inserted {
+  color: #34d399;
+}
+
+.token.operator,
+.token.entity,
+.token.url {
+  color: #38bdf8;
+}
+
+.token.atrule,
+.token.attr-value,
+.token.keyword {
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+.token.function,
+.token.class-name {
+  color: #c084fc;
+}
+
+.token.regex,
+.token.important,
+.token.variable {
+  color: #f472b6;
+}
