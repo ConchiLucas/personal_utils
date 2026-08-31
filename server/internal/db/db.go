@@ -1398,32 +1398,32 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		// 4. 常用本地路径 (path)
 		{
 			Section:   "path",
-			Title:     "Workforce 代码根工作区",
-			Content:   "/Users/conchi/workforce",
+			Title:     "Agent Context Router 工程目录",
+			Content:   "/Users/conchi/workforce/python_workforce/agent-context-router",
 			SortOrder: 1,
 		},
 		{
 			Section:   "path",
-			Title:     "Personal Utils 项目路径",
-			Content:   "/Users/conchi/workforce/go_workforce/personal_utils",
+			Title:     "English Workforce 工程目录",
+			Content:   "/Users/conchi/workforce/english_workforce",
 			SortOrder: 2,
 		},
 		{
 			Section:   "path",
-			Title:     "数据库导出暂存目录",
-			Content:   "/tmp/db_export",
+			Title:     "Stock Workforce 工程目录",
+			Content:   "/Users/conchi/workforce/stock_workforce",
 			SortOrder: 3,
 		},
 		{
 			Section:   "path",
-			Title:     "Vibecoding Utils 项目路径",
-			Content:   "/Users/conchi/workforce/go_workforce/vibecoding-utils",
+			Title:     "Personal Utils 工程目录",
+			Content:   "/Users/conchi/workforce/go_workforce/personal_utils",
 			SortOrder: 4,
 		},
 		{
 			Section:   "path",
-			Title:     "macOS 临时缓存目录",
-			Content:   "/tmp",
+			Title:     "Workforce 代码根工作区",
+			Content:   "/Users/conchi/workforce",
 			SortOrder: 5,
 		},
 

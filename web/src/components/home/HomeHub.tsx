@@ -28,12 +28,12 @@ export const HomeHub: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
 
-  // Expanded state for each section (website default true to show all 5 core sites)
+  // Expanded state for each section (website & path default true to show all core items)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     website: true,
     account: false,
     command: false,
-    path: false,
+    path: true,
     document: false,
   });
 
