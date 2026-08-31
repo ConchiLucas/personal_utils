@@ -1,16 +1,16 @@
 .PHONY: dev-backend dev-frontend dev build clean
 
-# Run Go backend on :18999
+# Run Go backend on :39888
 dev-backend:
 	cd server && go run ./cmd/server/main.go
 
-# Run React frontend on :5173
+# Run React frontend on :39889
 dev-frontend:
 	cd web && npm run dev
 
 # Run both in background
 dev:
-	@echo "Starting Go backend on :18999 and Vite frontend on :5173..."
+	@echo "Starting Go backend on :39888 and Vite frontend on :39889..."
 	@(cd server && go run ./cmd/server/main.go) & (cd web && npm run dev)
 
 build-web:

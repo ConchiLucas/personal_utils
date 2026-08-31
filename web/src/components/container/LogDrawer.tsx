@@ -53,6 +53,16 @@ export const LogDrawer: React.FC<LogDrawerProps> = ({ container, onClose }) => {
     return () => clearInterval(timer);
   }, [autoRefresh, container, tail]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const handleCopy = () => {
     navigator.clipboard.writeText(logs);
     setCopied(true);
@@ -68,8 +78,14 @@ export const LogDrawer: React.FC<LogDrawerProps> = ({ container, onClose }) => {
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm transition-opacity">
-      <div className="w-full max-w-3xl bg-[#09090b] border-l border-[#27272a] h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">
+    <div 
+      className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm transition-opacity cursor-pointer"
+      onClick={onClose}
+    >
+      <div 
+        className="w-full max-w-3xl bg-[#09090b] border-l border-[#27272a] h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-200 cursor-default"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Drawer Header */}
         <div className="p-4 border-b border-[#27272a] flex items-center justify-between bg-[#18181b]/80">
           <div className="flex items-center gap-3">

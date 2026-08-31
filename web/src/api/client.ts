@@ -10,7 +10,9 @@ import {
   ScriptRunResponse,
   DashboardResponse,
   FileRecord,
-  ServiceConfig
+  ServiceConfig,
+  ProjectDirectory,
+  ProjectService
 } from '../types';
 
 const API_BASE = '/api';
@@ -391,6 +393,95 @@ export const api = {
       throw new Error(json.error || `${action} 服务失败`);
     }
     return json;
+  },
+
+  // Project Overview (服务概览) API
+  async getProjectDirectories(): Promise<ProjectDirectory[]> {
+    const res = await fetch(`${API_BASE}/project-directories`);
+    if (!res.ok) throw new Error('Failed to fetch project directories');
+    const json = await res.json();
+    return json.data || [];
+  },
+
+  async getProjectServices(params?: { directory_id?: number; directory_slug?: string }): Promise<ProjectService[]> {
+    const query = new URLSearchParams();
+    if (params?.directory_id) query.set('directory_id', String(params.directory_id));
+    if (params?.directory_slug) query.set('directory_slug', params.directory_slug);
+
+    const res = await fetch(`${API_BASE}/project-services?${query.toString()}`);
+    if (!res.ok) throw new Error('Failed to fetch project services');
+    const json = await res.json();
+    return json.data || [];
+  },
+
+  async createProjectDirectory(data: Partial<ProjectDirectory>): Promise<ProjectDirectory> {
+    const res = await fetch(`${API_BASE}/project-directories`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Failed to create project directory');
+    }
+    const json = await res.json();
+    return json.data;
+  },
+
+  async updateProjectDirectory(id: number, data: Partial<ProjectDirectory>): Promise<ProjectDirectory> {
+    const res = await fetch(`${API_BASE}/project-directories/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Failed to update project directory');
+    }
+    const json = await res.json();
+    return json.data;
+  },
+
+  async deleteProjectDirectory(id: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/project-directories/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Failed to delete project directory');
+  },
+
+  async createProjectService(data: Partial<ProjectService>): Promise<ProjectService> {
+    const res = await fetch(`${API_BASE}/project-services`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Failed to create project service');
+    }
+    const json = await res.json();
+    return json.data;
+  },
+
+  async updateProjectService(id: number, data: Partial<ProjectService>): Promise<ProjectService> {
+    const res = await fetch(`${API_BASE}/project-services/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Failed to update project service');
+    }
+    const json = await res.json();
+    return json.data;
+  },
+
+  async deleteProjectService(id: number): Promise<void> {
+    const res = await fetch(`${API_BASE}/project-services/${id}`, {
+      method: 'DELETE',
+    });
+    if (!res.ok) throw new Error('Failed to delete project service');
   },
 };
 

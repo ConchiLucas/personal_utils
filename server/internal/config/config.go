@@ -13,7 +13,7 @@ type Config struct {
 }
 
 func Load() *Config {
-	port := getEnv("PORT", "18999")
+	port := getEnv("PORT", "39888")
 	dbDSN := getDatabaseDSN()
 	dockerHost := getEnv("DOCKER_HOST", "")
 
@@ -21,7 +21,7 @@ func Load() *Config {
 		Port:         port,
 		DatabaseDSN:  dbDSN,
 		DockerHost:   dockerHost,
-		AllowOrigins: []string{"http://localhost:5173", "http://127.0.0.1:5173", "*"},
+		AllowOrigins: []string{"http://localhost:39889", "http://127.0.0.1:39889", "http://localhost:5173", "http://127.0.0.1:5173", "*"},
 	}
 }
 

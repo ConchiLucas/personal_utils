@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Settings,
+  Cpu,
   RefreshCw,
   Search,
   Check,
@@ -139,17 +139,17 @@ export const ConfigManager: React.FC = () => {
         <div className="max-w-[1920px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-purple-600/10 border border-purple-500/20 flex items-center justify-center text-purple-400 font-bold shadow-sm">
-              <Settings className="w-5 h-5" />
+              <Cpu className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-base font-bold text-white tracking-tight">宿主机服务与配置文件管理</h1>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20 font-mono">
-                  Live Process & Config
+                <h1 className="text-base font-bold text-white tracking-tight">脚本与中间件管理</h1>
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 font-mono">
+                  Scripts & Middleware
                 </span>
               </div>
               <p className="text-xs text-zinc-400 mt-0.5">
-                实时监听宿主机 FRP、Nginx、Docker 及后台脚本运行状态，支持关联配置文件查看、语法高亮与在线修改保存
+                实时监听本地 PostgreSQL、Redis、MinIO、Nacos、Elasticsearch、MySQL 与后台脚本运行状态，支持关联配置文件查看、语法高亮与在线修改保存
               </p>
             </div>
           </div>

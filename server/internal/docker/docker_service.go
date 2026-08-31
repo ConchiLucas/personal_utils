@@ -239,56 +239,62 @@ func DetectWorkspace(name, image string, labels map[string]string) string {
 	workingDir := strings.ToLower(labels["com.docker.compose.project.working_dir"])
 	project := strings.ToLower(labels["com.docker.compose.project"])
 	nameLower := strings.ToLower(name)
+	imageLower := strings.ToLower(image)
 
-	// 1. go_workforce / watch-inbox
-	if strings.Contains(workingDir, "watch-inbox") || strings.Contains(project, "watch-inbox") || strings.Contains(nameLower, "watch-inbox") {
-		return "watch-inbox"
+	// 1. C12 数字化业务微服务平台 (C12 Cloud Platform)
+	if strings.HasPrefix(nameLower, "c12-") || strings.Contains(project, "c12") || strings.Contains(workingDir, "c12") ||
+		strings.Contains(workingDir, "panzhihua") || strings.Contains(project, "panzhihua") ||
+		strings.Contains(nameLower, "c12_") {
+		return "c12-cloud"
 	}
 
-	// 2. go_workforce / study_workbench
-	if strings.Contains(workingDir, "study_workbench") || strings.Contains(project, "study_workbench") || strings.Contains(nameLower, "study_workbench") {
-		return "study_workbench"
+	// 2. AI 效率与导航工具 (AI Tools)
+	if strings.Contains(workingDir, "ai-file-navigation") || strings.Contains(project, "ai-file-navigation") ||
+		strings.Contains(nameLower, "ai-file-navigation") || strings.Contains(nameLower, "ai_file_navigation") {
+		return "ai-tools"
 	}
 
-	// 3. go_workforce / study-content-admin
-	if strings.Contains(workingDir, "study-content-admin") || strings.Contains(project, "study-content-admin") || strings.Contains(nameLower, "study-content-admin") {
-		return "study-content-admin"
+	// 3. 基础中间件与基础设施 (Middleware)
+	if strings.Contains(workingDir, "middleware") || strings.Contains(workingDir, "database") ||
+		strings.Contains(nameLower, "postgres") || strings.Contains(nameLower, "redis") ||
+		strings.Contains(nameLower, "minio") || strings.Contains(nameLower, "snail-job") ||
+		strings.Contains(nameLower, "mysql") || strings.Contains(nameLower, "elasticsearch") ||
+		strings.Contains(nameLower, "nacos") || strings.Contains(nameLower, "nginx") ||
+		strings.Contains(imageLower, "postgres") || strings.Contains(imageLower, "redis") ||
+		strings.Contains(imageLower, "minio") || strings.Contains(imageLower, "mysql") ||
+		strings.Contains(imageLower, "elasticsearch") || strings.Contains(imageLower, "nacos") ||
+		strings.Contains(imageLower, "snail-job") {
+		return "middleware"
 	}
 
-	// 4. go_workforce / shared-config-center
-	if strings.Contains(workingDir, "shared-config-center") || strings.Contains(project, "shared-config-center") || strings.Contains(nameLower, "shared-config-center") {
+	// 4. shared-config-center
+	if strings.Contains(workingDir, "shared-config-center") || strings.Contains(project, "shared-config-center") ||
+		strings.Contains(nameLower, "shared-config-center") || strings.Contains(nameLower, "ai_share_config") {
 		return "shared-config-center"
 	}
 
 	// 5. rob_english_word_workforce
 	if strings.Contains(workingDir, "rob_english") || strings.Contains(workingDir, "word_select") ||
 		strings.Contains(project, "rob-english") || strings.Contains(project, "word-select") || strings.Contains(project, "word-agent") ||
-		strings.Contains(nameLower, "rob-english") || strings.Contains(nameLower, "word-select") || strings.Contains(nameLower, "word-agent") {
+		strings.Contains(nameLower, "rob-english") || strings.Contains(nameLower, "word-select") || strings.Contains(nameLower, "word-agent") ||
+		strings.Contains(nameLower, "rob_english") {
 		return "rob_english_word"
 	}
 
 	// 6. stock_workforce
-	if strings.Contains(workingDir, "stock_workforce") || strings.Contains(project, "stock") || strings.Contains(nameLower, "stock-") {
+	if strings.Contains(workingDir, "stock_workforce") || strings.Contains(project, "stock") || strings.Contains(nameLower, "stock-") || strings.Contains(nameLower, "stock_") {
 		return "stock_workforce"
 	}
 
 	// 7. python_workforce
-	if strings.Contains(workingDir, "python_workforce") || strings.Contains(project, "agent-context-router") || strings.Contains(project, "english-material") ||
-		strings.Contains(nameLower, "agent-context-router") || strings.Contains(nameLower, "english-material") {
+	if strings.Contains(workingDir, "python_workforce") || strings.Contains(project, "agent-context-router") || strings.Contains(project, "english-material") || strings.Contains(project, "ai-task-center") ||
+		strings.Contains(nameLower, "agent-context-router") || strings.Contains(nameLower, "english-material") || strings.Contains(nameLower, "ai-task-center") {
 		return "python_workforce"
 	}
 
-	// 8. sub2api
+	// 8. 兼容可能部署的子项目
 	if strings.Contains(nameLower, "sub2api") || strings.Contains(project, "sub2api") {
 		return "sub2api"
-	}
-
-	// 9. Middleware & Infrastructure
-	if strings.Contains(workingDir, "middleware") || strings.Contains(workingDir, "database") ||
-		strings.Contains(nameLower, "postgres") || strings.Contains(nameLower, "redis") ||
-		strings.Contains(nameLower, "minio") || strings.Contains(nameLower, "snail-job") ||
-		strings.Contains(nameLower, "nginx") {
-		return "middleware"
 	}
 
 	return "other"

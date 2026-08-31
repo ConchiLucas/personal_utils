@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Boxes, BookOpen, Send, Terminal, Folder, Settings } from 'lucide-react';
+import { Home, Boxes, Layers, Cpu, BookOpen, Send, Terminal, Folder } from 'lucide-react';
 import { MainNavTab } from '../../types';
 
 interface TopNavProps {
@@ -31,7 +31,7 @@ export const TopNav: React.FC<TopNavProps> = ({ activeTab, onSelectTab }) => {
 
           {/* Top Menu Tabs */}
           <nav className="flex items-center gap-1.5">
-            {/* 0. Home Dashboard */}
+            {/* 1. 首页 */}
             <button
               onClick={() => onSelectTab('home')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
@@ -47,7 +47,7 @@ export const TopNav: React.FC<TopNavProps> = ({ activeTab, onSelectTab }) => {
               </span>
             </button>
 
-            {/* 1. Container Hub */}
+            {/* 2. 容器概览 */}
             <button
               onClick={() => onSelectTab('containers')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
@@ -57,13 +57,45 @@ export const TopNav: React.FC<TopNavProps> = ({ activeTab, onSelectTab }) => {
               }`}
             >
               <Boxes className={`w-3.5 h-3.5 ${activeTab === 'containers' ? 'text-blue-400' : 'text-[#71717a]'}`} />
-              <span>容器与工作空间概览</span>
+              <span>容器概览</span>
               <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                 Docker
               </span>
             </button>
 
-            {/* 2. Notes Hub */}
+            {/* 3. 服务概览 */}
+            <button
+              onClick={() => onSelectTab('projects')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                activeTab === 'projects'
+                  ? 'bg-[#27272a] text-white shadow-sm font-semibold'
+                  : 'text-[#a1a1aa] hover:text-white hover:bg-[#18181b]'
+              }`}
+            >
+              <Layers className={`w-3.5 h-3.5 ${activeTab === 'projects' ? 'text-sky-400' : 'text-[#71717a]'}`} />
+              <span>服务概览</span>
+              <span className="text-[9px] px-1 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                Projects
+              </span>
+            </button>
+
+            {/* 4. 脚本与中间件 */}
+            <button
+              onClick={() => onSelectTab('services')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                activeTab === 'services'
+                  ? 'bg-[#27272a] text-white shadow-sm font-semibold'
+                  : 'text-[#a1a1aa] hover:text-white hover:bg-[#18181b]'
+              }`}
+            >
+              <Cpu className={`w-3.5 h-3.5 ${activeTab === 'services' ? 'text-sky-400' : 'text-[#71717a]'}`} />
+              <span>脚本与中间件</span>
+              <span className="text-[9px] px-1 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                Middleware
+              </span>
+            </button>
+
+            {/* 5. 常用笔记 */}
             <button
               onClick={() => onSelectTab('notes')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
@@ -79,39 +111,7 @@ export const TopNav: React.FC<TopNavProps> = ({ activeTab, onSelectTab }) => {
               </span>
             </button>
 
-            {/* 3. Agile Request (敏捷请求) */}
-            <button
-              onClick={() => onSelectTab('agile_request')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                activeTab === 'agile_request'
-                  ? 'bg-[#27272a] text-white shadow-sm font-semibold'
-                  : 'text-[#a1a1aa] hover:text-white hover:bg-[#18181b]'
-              }`}
-            >
-              <Send className={`w-3.5 h-3.5 ${activeTab === 'agile_request' ? 'text-blue-400' : 'text-[#71717a]'}`} />
-              <span>敏捷请求</span>
-              <span className="text-[9px] px-1 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">
-                API Client
-              </span>
-            </button>
-
-            {/* 4. Script Hub (脚本库) */}
-            <button
-              onClick={() => onSelectTab('scripts')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                activeTab === 'scripts'
-                  ? 'bg-[#27272a] text-white shadow-sm font-semibold'
-                  : 'text-[#a1a1aa] hover:text-white hover:bg-[#18181b]'
-              }`}
-            >
-              <Terminal className={`w-3.5 h-3.5 ${activeTab === 'scripts' ? 'text-emerald-400' : 'text-[#71717a]'}`} />
-              <span>脚本库</span>
-              <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                Script Hub
-              </span>
-            </button>
-
-            {/* 5. File Manager (文件管理) */}
+            {/* 6. 文件管理 */}
             <button
               onClick={() => onSelectTab('files')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
@@ -127,19 +127,35 @@ export const TopNav: React.FC<TopNavProps> = ({ activeTab, onSelectTab }) => {
               </span>
             </button>
 
-            {/* 6. Config & Service Manager (配置管理) */}
+            {/* 7. 脚本库 */}
             <button
-              onClick={() => onSelectTab('services')}
+              onClick={() => onSelectTab('scripts')}
               className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                activeTab === 'services'
+                activeTab === 'scripts'
                   ? 'bg-[#27272a] text-white shadow-sm font-semibold'
                   : 'text-[#a1a1aa] hover:text-white hover:bg-[#18181b]'
               }`}
             >
-              <Settings className={`w-3.5 h-3.5 ${activeTab === 'services' ? 'text-sky-400' : 'text-[#71717a]'}`} />
-              <span>配置管理</span>
+              <Terminal className={`w-3.5 h-3.5 ${activeTab === 'scripts' ? 'text-emerald-400' : 'text-[#71717a]'}`} />
+              <span>脚本库</span>
+              <span className="text-[9px] px-1 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                Script Hub
+              </span>
+            </button>
+
+            {/* 8. 敏捷请求 */}
+            <button
+              onClick={() => onSelectTab('agile_request')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                activeTab === 'agile_request'
+                  ? 'bg-[#27272a] text-white shadow-sm font-semibold'
+                  : 'text-[#a1a1aa] hover:text-white hover:bg-[#18181b]'
+              }`}
+            >
+              <Send className={`w-3.5 h-3.5 ${activeTab === 'agile_request' ? 'text-blue-400' : 'text-[#71717a]'}`} />
+              <span>敏捷请求</span>
               <span className="text-[9px] px-1 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">
-                Services
+                API Client
               </span>
             </button>
           </nav>

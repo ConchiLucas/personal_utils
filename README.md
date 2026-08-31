@@ -11,7 +11,7 @@
 - **5 大板块**：常用网站直达、高频账号密码安全速查、高频执行命令一键复制、常用本地项目路径、核心文档快速直达（调用 macOS 默认程序秒开）。
 - 数据由 PostgreSQL `dashboard_items` 持久化，支持默认折叠与一键展开。
 
-### 2. 🐳 容器与工作空间概览 (`Containers Hub`)
+### 2. 🐳 容器概览 (`Containers Hub`)
 - 直连 Docker Daemon Socket，秒级获取容器运行状态、真实 CPU 与内存占用。
 - 智能端口映射检测，自动识别 Web 端口并支持一键在新标签页中打开。
 - 内置暗黑极客风格终端日志抽屉（实时日志流拉取）。
@@ -54,7 +54,7 @@
 ```bash
 cd server
 go run cmd/server/main.go
-# 后端默认监听端口: 18999
+# 后端默认监听端口: 39888
 ```
 
 ### 2. 启动前端
@@ -62,7 +62,7 @@ go run cmd/server/main.go
 cd web
 npm install
 npm run dev
-# 前端默认监听端口: 5173
+# 前端默认监听端口: 39889
 ```
 
 ---

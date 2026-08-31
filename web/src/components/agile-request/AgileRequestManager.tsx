@@ -328,7 +328,7 @@ export const AgileRequestManager: React.FC = () => {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && handleSend()}
-            placeholder="http://127.0.0.1:18999/api/health 或 https://api.example.com/v1/..."
+            placeholder="http://127.0.0.1:39888/api/health 或 https://api.example.com/v1/..."
             className="w-full h-10 px-3.5 rounded-xl border border-[#27272a] bg-[#141417] text-xs text-[#f4f4f5] font-mono placeholder:text-[#52525b] outline-none focus:border-blue-500/60 focus:ring-1 focus:ring-blue-500/30 transition-all"
           />
           {url && (

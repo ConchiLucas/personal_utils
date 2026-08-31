@@ -210,5 +210,50 @@ export interface ServiceConfig {
   config_file_exists: boolean;
 }
 
-export type MainNavTab = 'home' | 'containers' | 'notes' | 'agile_request' | 'scripts' | 'files' | 'services';
+export interface ProjectEndpoint {
+  label: string;
+  url: string;
+}
+
+export interface ProjectService {
+  id: number;
+  created_at: string;
+  updated_at: string;
+  directory_id: number;
+  name: string;
+  role: 'backend' | 'frontend' | 'worker' | 'service' | 'fullstack' | string;
+  language: string;
+  framework?: string;
+  relative_path: string;
+  port: number;
+  internal_port?: number;
+  description: string;
+  start_cmd?: string;
+  dev_cmd?: string;
+  endpoints?: string; // JSON string e.g. '[{"label":"Swagger","url":"..."}]'
+  sort_order: number;
+  status: 'running' | 'stopped';
+  absolute_path?: string;
+  path_exists?: boolean;
+}
+
+export interface ProjectDirectory {
+  id: number;
+  created_at: string;
+  updated_at: string;
+  name: string;
+  slug: string;
+  category: string;
+  path: string;
+  description: string;
+  icon?: string;
+  sort_order: number;
+  services?: ProjectService[];
+  total_services?: number;
+  running_services?: number;
+  path_exists?: boolean;
+}
+
+export type MainNavTab = 'home' | 'containers' | 'notes' | 'projects' | 'agile_request' | 'scripts' | 'files' | 'services';
+
 

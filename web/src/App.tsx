@@ -5,6 +5,7 @@ import { WorkspaceSidebar } from './components/workspace/WorkspaceSidebar';
 import { ContainerTable } from './components/container/ContainerTable';
 import { LogDrawer } from './components/container/LogDrawer';
 import { NotesHub } from './components/notes/NotesHub';
+import { ProjectsOverview } from './components/project-overview/ProjectsOverview';
 import { AgileRequestManager } from './components/agile-request/AgileRequestManager';
 import { ScriptHub } from './components/scripts/ScriptHub';
 import { FileManager } from './components/files/FileManager';
@@ -137,6 +138,8 @@ export function App() {
             />
           </>
         )}
+
+        {activeTab === 'projects' && <ProjectsOverview />}
 
         {activeTab === 'notes' && <NotesHub />}
 

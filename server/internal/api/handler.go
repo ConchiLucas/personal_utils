@@ -878,13 +878,33 @@ func (h *Handler) OpenSystemPath(c *gin.Context) {
 		return
 	}
 
-	cmd := exec.Command("open", req.Path)
+	targetPath := req.Path
+	var cmd *exec.Cmd
+
+	if fi, err := os.Stat(targetPath); err == nil {
+		if fi.IsDir() {
+			// Directory: open in macOS Finder (访达)
+			cmd = exec.Command("open", "-a", "Finder", targetPath)
+		} else {
+			// File: reveal in Finder (访达) with file selected
+			cmd = exec.Command("open", "-R", targetPath)
+		}
+	} else {
+		// If exact file does not exist, open its parent directory in Finder (访达)
+		parentDir := filepath.Dir(targetPath)
+		if _, pErr := os.Stat(parentDir); pErr == nil {
+			cmd = exec.Command("open", "-a", "Finder", parentDir)
+		} else {
+			cmd = exec.Command("open", "-a", "Finder", targetPath)
+		}
+	}
+
 	if err := cmd.Start(); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "打开访达失败: " + err.Error()})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "已在系统默认程序中打开"})
+	c.JSON(http.StatusOK, gin.H{"message": "已在访达 (Finder) 中打开"})
 }
 
 func (h *Handler) GetDashboardItems(c *gin.Context) {
@@ -1297,6 +1317,226 @@ func (h *Handler) ExecuteServiceAction(c *gin.Context) {
 		"message": fmt.Sprintf("服务已成功执行 %s 操作", req.Action),
 		"output":  output,
 		"data":    svc,
+	})
+}
+
+// GetProjectDirectories returns all project workspace directories with live service status
+func (h *Handler) GetProjectDirectories(c *gin.Context) {
+	var dirs []model.ProjectDirectory
+	if err := db.DB.Preload("Services", func(gdb *gorm.DB) *gorm.DB {
+		return gdb.Order("project_services.sort_order asc, project_services.id asc")
+	}).Order("sort_order asc, id asc").Find(&dirs).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取项目目录列表失败: " + err.Error()})
+		return
+	}
+
+	for i := range dirs {
+		if _, err := os.Stat(dirs[i].Path); err == nil {
+			dirs[i].PathExists = true
+		} else {
+			dirs[i].PathExists = false
+		}
+
+		dirs[i].TotalServices = len(dirs[i].Services)
+		runningCount := 0
+		for j := range dirs[i].Services {
+			svc := &dirs[i].Services[j]
+			svc.AbsolutePath = filepath.Join(dirs[i].Path, svc.RelativePath)
+			if _, err := os.Stat(svc.AbsolutePath); err == nil {
+				svc.PathExists = true
+			}
+			if svc.Port > 0 && service.CheckPortListening(svc.Port) {
+				svc.Status = "running"
+				runningCount++
+			} else {
+				svc.Status = "stopped"
+			}
+		}
+		dirs[i].RunningServices = runningCount
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": dirs,
+	})
+}
+
+// GetProjectServices returns services for a directory or all services
+func (h *Handler) GetProjectServices(c *gin.Context) {
+	dirID := c.Query("directory_id")
+	dirSlug := c.Query("directory_slug")
+
+	query := db.DB.Model(&model.ProjectService{})
+
+	var parentDir model.ProjectDirectory
+	if dirID != "" {
+		query = query.Where("directory_id = ?", dirID)
+		db.DB.First(&parentDir, dirID)
+	} else if dirSlug != "" {
+		if err := db.DB.Where("slug = ?", dirSlug).First(&parentDir).Error; err == nil {
+			query = query.Where("directory_id = ?", parentDir.ID)
+		}
+	}
+
+	var services []model.ProjectService
+	if err := query.Order("sort_order asc, id asc").Find(&services).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "获取服务列表失败: " + err.Error()})
+		return
+	}
+
+	// Cache directory paths
+	dirMap := make(map[uint]string)
+	if parentDir.ID != 0 {
+		dirMap[parentDir.ID] = parentDir.Path
+	}
+
+	for i := range services {
+		svc := &services[i]
+		basePath, ok := dirMap[svc.DirectoryID]
+		if !ok {
+			var d model.ProjectDirectory
+			if err := db.DB.First(&d, svc.DirectoryID).Error; err == nil {
+				basePath = d.Path
+				dirMap[svc.DirectoryID] = d.Path
+			}
+		}
+
+		if basePath != "" {
+			svc.AbsolutePath = filepath.Join(basePath, svc.RelativePath)
+			if _, err := os.Stat(svc.AbsolutePath); err == nil {
+				svc.PathExists = true
+			} else {
+				svc.PathExists = false
+			}
+		}
+
+		if svc.Port > 0 && service.CheckPortListening(svc.Port) {
+			svc.Status = "running"
+		} else {
+			svc.Status = "stopped"
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": services,
+	})
+}
+
+// CreateProjectDirectory creates a new workspace directory
+func (h *Handler) CreateProjectDirectory(c *gin.Context) {
+	var dir model.ProjectDirectory
+	if err := c.ShouldBindJSON(&dir); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的目录参数: " + err.Error()})
+		return
+	}
+
+	if err := db.DB.Create(&dir).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建项目目录失败: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"data":    dir,
+		"message": "项目目录创建成功",
+	})
+}
+
+// UpdateProjectDirectory updates an existing workspace directory
+func (h *Handler) UpdateProjectDirectory(c *gin.Context) {
+	id := c.Param("id")
+	var dir model.ProjectDirectory
+	if err := db.DB.First(&dir, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "项目目录未找到"})
+		return
+	}
+
+	if err := c.ShouldBindJSON(&dir); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的修改参数: " + err.Error()})
+		return
+	}
+
+	if err := db.DB.Save(&dir).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新项目目录失败: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":    dir,
+		"message": "项目目录更新成功",
+	})
+}
+
+// DeleteProjectDirectory deletes a workspace directory and its services
+func (h *Handler) DeleteProjectDirectory(c *gin.Context) {
+	id := c.Param("id")
+	if err := db.DB.Where("directory_id = ?", id).Delete(&model.ProjectService{}).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除关联服务失败: " + err.Error()})
+		return
+	}
+
+	if err := db.DB.Delete(&model.ProjectDirectory{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除项目目录失败: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "项目目录及其服务已删除",
+	})
+}
+
+// CreateProjectService creates a service entry under a directory
+func (h *Handler) CreateProjectService(c *gin.Context) {
+	var svc model.ProjectService
+	if err := c.ShouldBindJSON(&svc); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的服务参数: " + err.Error()})
+		return
+	}
+
+	if err := db.DB.Create(&svc).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "创建服务失败: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"data":    svc,
+		"message": "服务创建成功",
+	})
+}
+
+// UpdateProjectService updates a service entry
+func (h *Handler) UpdateProjectService(c *gin.Context) {
+	id := c.Param("id")
+	var svc model.ProjectService
+	if err := db.DB.First(&svc, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "服务未找到"})
+		return
+	}
+
+	if err := c.ShouldBindJSON(&svc); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "无效的修改参数: " + err.Error()})
+		return
+	}
+
+	if err := db.DB.Save(&svc).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "更新服务失败: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data":    svc,
+		"message": "服务更新成功",
+	})
+}
+
+// DeleteProjectService deletes a service entry
+func (h *Handler) DeleteProjectService(c *gin.Context) {
+	id := c.Param("id")
+	if err := db.DB.Delete(&model.ProjectService{}, id).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "删除服务失败: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message": "服务删除成功",
 	})
 }
 

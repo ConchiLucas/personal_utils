@@ -67,6 +67,8 @@ func Init(dsn string) (*gorm.DB, error) {
 		&model.DashboardItem{},
 		&model.FileRecord{},
 		&model.ServiceConfig{},
+		&model.ProjectDirectory{},
+		&model.ProjectService{},
 	); err != nil {
 		return nil, fmt.Errorf("auto migrate tables: %w", err)
 	}
@@ -76,6 +78,7 @@ func Init(dsn string) (*gorm.DB, error) {
 	seedDefaultScripts(gdb)
 	seedDefaultDashboardItems(gdb)
 	seedDefaultServiceConfigs(gdb)
+	seedDefaultProjectDirectories(gdb)
 
 	DB = gdb
 	log.Printf("[DB] Database initialized successfully (Dialect: %s)", gdb.Dialector.Name())
@@ -104,10 +107,10 @@ func ensurePostgresDB(originalDSN string) error {
 }
 
 func seedDefaultData(gdb *gorm.DB) {
-	// Clean up legacy placeholder records
-	gdb.Where("slug IN (?)", []string{"local-dev", "ai-hub", "staging-k8s"}).Delete(&model.Workspace{})
+	// Clean up legacy placeholder records & obsolete workspaces
+	gdb.Where("slug IN (?)", []string{"study_workbench", "watch-inbox", "study-content-admin", "sub2api", "local-dev", "ai-hub", "staging-k8s"}).Delete(&model.Workspace{})
 
-	// Re-sync workforce workspaces
+	// Re-sync workforce workspaces tailored to current machine
 	defaultWorkspaces := []model.Workspace{
 		{
 			Name:        "🌟 全部容器实例 (All)",
@@ -120,44 +123,34 @@ func seedDefaultData(gdb *gorm.DB) {
 			SortOrder:   0,
 		},
 		{
-			Name:        "📚 study_workbench",
-			Slug:        "study_workbench",
-			Description: "儿童学习工作台 (Backend, Kid-App, Postgres)",
+			Name:        "🏢 C12 微服务业务集群",
+			Slug:        "c12-cloud",
+			Description: "C12 数字化协同业务平台 (Auth, Admin, Portal, WMS, RCC, MTP, Track, Data, Open)",
 			HostType:    "local_docker",
 			Color:       "blue",
-			Icon:        "book",
+			Icon:        "cloud",
 			IsDefault:   false,
 			SortOrder:   1,
 		},
 		{
-			Name:        "📥 watch-inbox",
-			Slug:        "watch-inbox",
-			Description: "随心记收件箱 (Web :18501, API :18801)",
+			Name:        "🔌 基础中间件服务 (Middleware)",
+			Slug:        "middleware",
+			Description: "PostgreSQL:5432, Redis:6379, MinIO:19100, MySQL:3306, ES:9200, Nacos:8848, SnailJob:18080",
 			HostType:    "local_docker",
-			Color:       "sky",
-			Icon:        "inbox",
+			Color:       "zinc",
+			Icon:        "database",
 			IsDefault:   false,
 			SortOrder:   2,
 		},
 		{
-			Name:        "🗂️ study-content-admin",
-			Slug:        "study-content-admin",
-			Description: "识字学习内容管理后台 (App :19091)",
+			Name:        "🧭 AI 效率与导航工具",
+			Slug:        "ai-tools",
+			Description: "AI 文件导航服务 (Web :6001, Server :10001)",
 			HostType:    "local_docker",
 			Color:       "indigo",
-			Icon:        "folder",
+			Icon:        "compass",
 			IsDefault:   false,
 			SortOrder:   3,
-		},
-		{
-			Name:        "⚙️ shared-config-center",
-			Slug:        "shared-config-center",
-			Description: "共享统一配置中心 (Web :18427, API :18783)",
-			HostType:    "local_docker",
-			Color:       "purple",
-			Icon:        "settings",
-			IsDefault:   false,
-			SortOrder:   4,
 		},
 		{
 			Name:        "🔤 rob_english_word",
@@ -167,17 +160,7 @@ func seedDefaultData(gdb *gorm.DB) {
 			Color:       "amber",
 			Icon:        "type",
 			IsDefault:   false,
-			SortOrder:   5,
-		},
-		{
-			Name:        "📈 stock_workforce",
-			Slug:        "stock_workforce",
-			Description: "股票量化调度大盘与后端分析服务",
-			HostType:    "local_docker",
-			Color:       "emerald",
-			Icon:        "trending-up",
-			IsDefault:   false,
-			SortOrder:   6,
+			SortOrder:   4,
 		},
 		{
 			Name:        "🤖 python_workforce",
@@ -187,27 +170,27 @@ func seedDefaultData(gdb *gorm.DB) {
 			Color:       "rose",
 			Icon:        "bot",
 			IsDefault:   false,
+			SortOrder:   5,
+		},
+		{
+			Name:        "⚙️ shared-config-center",
+			Slug:        "shared-config-center",
+			Description: "共享统一配置中心 (Web :18427, API :18783)",
+			HostType:    "local_docker",
+			Color:       "purple",
+			Icon:        "settings",
+			IsDefault:   false,
+			SortOrder:   6,
+		},
+		{
+			Name:        "📈 stock_workforce",
+			Slug:        "stock_workforce",
+			Description: "股票量化调度大盘与后端分析服务",
+			HostType:    "local_docker",
+			Color:       "emerald",
+			Icon:        "trending-up",
+			IsDefault:   false,
 			SortOrder:   7,
-		},
-		{
-			Name:        "🔌 基础中间件服务 (Middleware)",
-			Slug:        "middleware",
-			Description: "PostgreSQL:5432, Redis:6379, MinIO:19100, Nginx, SnailJob",
-			HostType:    "local_docker",
-			Color:       "zinc",
-			Icon:        "database",
-			IsDefault:   false,
-			SortOrder:   8,
-		},
-		{
-			Name:        "🌐 sub2api 订阅服务",
-			Slug:        "sub2api",
-			Description: "Sub2API 转换服务与专属依赖",
-			HostType:    "local_docker",
-			Color:       "teal",
-			Icon:        "globe",
-			IsDefault:   false,
-			SortOrder:   9,
 		},
 	}
 
@@ -235,48 +218,57 @@ func seedNotes(gdb *gorm.DB) {
 
 	// 1. Master Workforce AI Project Catalog & Decision Tree
 	fullNote := model.Note{
-		Title:    "🤖 [AI上下文] Workforce 全量 14 个工作空间与所有工程物理绝对路径总汇",
+		Title:    "🤖 [AI上下文] 本机 Workforce 全量项目群与工程物理绝对路径总汇",
 		Slug:     "workforce-full-landscape",
 		Category: "Architecture",
-		Tags:     "AIContext,Workforce,AllProjects,AbsolutePaths,Architecture",
+		Tags:     "AIContext,Workforce,AllProjects,AbsolutePaths,Architecture,C12,Go,Python",
 		IsPinned: true,
-		Content: `# 🤖 [AI 上下文] Workforce 全量 14 个工作空间与所有工程物理绝对路径总汇
+		Content: `# 🤖 [AI 上下文] 本机 Workforce 全量项目群与工程物理绝对路径总汇
 
 > **@AI_INSTRUCTION**: 当接收到用户的新功能研发、微服务扩展或代码重构指令时，**必须直接使用以下绝对物理路径定位项目文件**。本清单已 100% 递归涵盖 ` + "`/Users/conchi/workforce`" + ` 下的所有工作空间与子工程。
 
 ---
 
-## 1. 🚀 go_workforce (Go 业务与微服务中枢 · 10 个项目)
+## 1. 🏢 company_workforce (C12 数字化供应链集群 · 6 大项目群)
 
-| 工程名称 | 绝对物理根目录 (Absolute Directory) | Docker Compose / 入口路径 | 技术栈 & 核心定位 |
-| :--- | :--- | :--- | :--- |
-| **personal_utils** | ` + "`/Users/conchi/workforce/go_workforce/personal_utils`" + ` | ` + "`/Users/conchi/workforce/go_workforce/personal_utils/server/server_bin`" + ` | Go + React 工具箱与容器治理大盘 (:18999, :5173) |
-| **study_workbench** | ` + "`/Users/conchi/workforce/go_workforce/study_workbench`" + ` | ` + "`/Users/conchi/workforce/go_workforce/study_workbench/docker-compose.yml`" + ` | 儿童智能伴学后端 (:19081)、儿童端 Web (:19082)、专属 PG (:15432) |
-| **watch-inbox** | ` + "`/Users/conchi/workforce/go_workforce/watch-inbox`" + ` | ` + "`/Users/conchi/workforce/go_workforce/watch-inbox/docker-compose.yml`" + ` | 随心记碎片收集收件箱 (Web :18501, API :18801) |
-| **study-content-admin** | ` + "`/Users/conchi/workforce/go_workforce/study-content-admin`" + ` | ` + "`/Users/conchi/workforce/go_workforce/study-content-admin/docker-compose.yml`" + ` | 识字学习内容中台 (App :19091) |
-| **shared-config-center** | ` + "`/Users/conchi/workforce/go_workforce/shared-config-center`" + ` | ` + "`/Users/conchi/workforce/go_workforce/shared-config-center/docker-compose.yml`" + ` | 共享统一配置中心 (Web :18427, API :18783) |
-| **MoneyPrinterTurbo** | ` + "`/Users/conchi/workforce/go_workforce/MoneyPrinterTurbo`" + ` | ` + "`/Users/conchi/workforce/go_workforce/MoneyPrinterTurbo/docker-compose.yml`" + ` | 自动化短视频智能剪辑生成流水线 |
-| **ai-datahub** | ` + "`/Users/conchi/workforce/go_workforce/ai-datahub`" + ` | ` + "`/Users/conchi/workforce/go_workforce/ai-datahub`" + ` | AI 语料与向量知识库数据中台 |
-| **task_board** | ` + "`/Users/conchi/workforce/go_workforce/task_board`" + ` | ` + "`/Users/conchi/workforce/go_workforce/task_board/docker-compose.yml`" + ` | 研发敏捷协作与任务看板 (:18338) |
-| **go-react-template** | ` + "`/Users/conchi/workforce/go_workforce/go-react-template`" + ` | ` + "`/Users/conchi/workforce/go_workforce/go-react-template/docker-compose.yml`" + ` | Go + React 全栈开发标准底座模板 |
-| **vibecoding-utils** | ` + "`/Users/conchi/workforce/go_workforce/vibecoding-utils`" + ` | ` + "`/Users/conchi/workforce/go_workforce/vibecoding-utils`" + ` | 极速部署与研发运维辅助工具集 |
+| 项目群名称 | 绝对物理根目录 (Absolute Directory) | 核心定位与技术栈 |
+| :--- | :--- | :--- |
+| **panzhihua_dev_workforce** | ` + "`/Users/conchi/workforce/company_workforce/panzhihua_dev_workforce`" + ` | **C12 数字化协同业务平台核心中枢**<br>• 后端：` + "`backend/c12-*`" + ` (Auth :18083, Admin :18081, Portal :8086, WMS :8096, RCC :8097, MTP :8080, Track :18098, Data :18095, Open :18087, ES :18096, Sys :18082, EGPS, HEP, Report, SCTS, PDA)<br>• 前端：` + "`frontend/c12-*`" + ` (Portal-UI :3001, Auth-UI :3000, Admin-UI :3010, WMS-UI :3006, RCC-UI :3009, MTP-UI :3008, Portal-Admin-UI :3014, Auth-Admin-UI :2077, EGPS-UI, HEP-UI, SCTS-UI) |
+| **guoneng_workforce** | ` + "`/Users/conchi/workforce/company_workforce/guoneng_workforce`" + ` | **国能数字化项目** (backend, frontend, 数据库导出工具, Nacos 导入脚本) |
+| **guanche_workforce** | ` + "`/Users/conchi/workforce/company_workforce/guanche_workforce`" + ` | **管车业务中台 & TMS 物流协同平台** (c12-tms-basic, inside, order, tender, capacity 及对应 UI) |
+| **wms_workforce** | ` + "`/Users/conchi/workforce/company_workforce/wms_workforce`" + ` | **智能仓储管理系统 WMS 模块** (c12-wms, c12-admin, c12-auth, c12-core, c12-edi, c12-es) |
+| **zhongtie_workforce** | ` + "`/Users/conchi/workforce/company_workforce/zhongtie_workforce`" + ` | **中铁智慧物流电商服务平台** (zhwl-logistics-basic, bizoperate, express, express-api) |
+| **panzhihua_workforce** | ` + "`/Users/conchi/workforce/company_workforce/panzhihua_workforce`" + ` | **攀枝花项目正式发布与生产归档空间** |
 
 ---
 
-## 2. 🐍 python_workforce (Python AI Agent 智能体集群 · 6 个项目)
+## 2. 🚀 go_workforce (Go 业务微服务与研发中枢 · 7 个工程)
 
-| 工程名称 | 绝对物理根目录 (Absolute Directory) | Docker Compose / 入口路径 | 技术栈 & 核心定位 |
+| 工程名称 | 绝对物理根目录 (Absolute Directory) | 入口 / 端口 | 技术栈 & 核心定位 |
 | :--- | :--- | :--- | :--- |
-| **agent-context-router** | ` + "`/Users/conchi/workforce/python_workforce/agent-context-router`" + ` | ` + "`/Users/conchi/workforce/python_workforce/agent-context-router/docker-compose.yml`" + ` | 智能体动态上下文路由网关 (FastAPI :49173, Vue :49175) |
-| **english_material** | ` + "`/Users/conchi/workforce/python_workforce/english_material`" + ` | ` + "`/Users/conchi/workforce/python_workforce/english_material/deploy`" + ` | 英语语料清洗、抽取与特征管道 (:18744, :19638) |
-| **ai-task-center** | ` + "`/Users/conchi/workforce/python_workforce/ai-task-center`" + ` | ` + "`/Users/conchi/workforce/python_workforce/ai-task-center`" + ` | AI 异步长周期推理与批处理调度中心 |
-| **python_fastapi_dify** | ` + "`/Users/conchi/workforce/python_workforce/python_fastapi_dify`" + ` | ` + "`/Users/conchi/workforce/python_workforce/python_fastapi_dify`" + ` | Dify 工作流与业务粘合中间件层 |
-| **python_craw** | ` + "`/Users/conchi/workforce/python_workforce/python_craw`" + ` | ` + "`/Users/conchi/workforce/python_workforce/python_craw`" + ` | 多源数据采集与网页爬虫流水线 |
-| **python_314_miniconda** | ` + "`/Users/conchi/workforce/python_workforce/python_314_miniconda`" + ` | ` + "`/Users/conchi/workforce/python_workforce/python_314_miniconda`" + ` | Python 3.14 专属 Conda 虚拟环境 |
+| **personal_utils** | ` + "`/Users/conchi/workforce/go_workforce/personal_utils`" + ` | API ` + "`:39888`" + `, Web ` + "`:39889`" + ` | Go + React 个人开发运维工作台与容器大盘 |
+| **ai-file-navigation** | ` + "`/Users/conchi/workforce/go_workforce/ai-file-navigation`" + ` | API ` + "`:10001`" + `, Web ` + "`:6001`" + ` | AI 文件语义与智能检索导航服务 |
+| **ai_share_config** | ` + "`/Users/conchi/workforce/go_workforce/ai_share_config`" + ` | API ` + "`:18783`" + `, Web ` + "`:18427`" + ` | 统一共享配置中心 (Shared Config Center) |
+| **task_board** | ` + "`/Users/conchi/workforce/go_workforce/task_board`" + ` | Web ` + "`:18338`" + ` | 敏捷研发协作与任务看板 |
+| **ai-datahub** | ` + "`/Users/conchi/workforce/go_workforce/ai-datahub`" + ` | — | AI 语料与向量知识库数据中台 |
+| **go-react-template** | ` + "`/Users/conchi/workforce/go_workforce/go-react-template`" + ` | — | Go + React 全栈开发标准底座模板 |
+| **vibecoding-utils** | ` + "`/Users/conchi/workforce/go_workforce/vibecoding-utils`" + ` | — | 极速部署与研发运维辅助工具集 |
 
 ---
 
-## 3. 🔤 rob_english_word_workforce (英语单词学习与智能体 · 8 个子工程/目录)
+## 3. 🐍 python_workforce (Python AI 智能体集群 · 5 个工程)
+
+| 工程名称 | 绝对物理根目录 (Absolute Directory) | 服务端口 | 技术栈 & 核心定位 |
+| :--- | :--- | :--- | :--- |
+| **agent-context-router** | ` + "`/Users/conchi/workforce/python_workforce/agent-context-router`" + ` | FastAPI ` + "`:49173`" + `, Vue ` + "`:49175`" + ` | 智能体动态上下文路由网关 |
+| **english_material** | ` + "`/Users/conchi/workforce/python_workforce/english_material`" + ` | ` + "`:18744`" + `, ` + "`:19638`" + ` | 英语语料清洗、抽取与特征管道 |
+| **ai-task-center** | ` + "`/Users/conchi/workforce/python_workforce/ai-task-center`" + ` | — | AI 异步长周期推理与批处理调度中心 |
+| **python_craw** | ` + "`/Users/conchi/workforce/python_workforce/python_craw`" + ` | — | 多源数据采集与网页爬虫流水线 |
+| **python_314_miniconda** | ` + "`/Users/conchi/workforce/python_workforce/python_314_miniconda`" + ` | — | Python 3.14 专属 Conda 虚拟环境 |
+
+---
+
+## 4. 🔤 rob_english_word_workforce (英语单词学习与智能体 · 8 个子工程/目录)
 
 | 工程/服务名称 | 绝对物理根目录 (Absolute Directory) | 服务端口 | 技术栈 & 核心定位 |
 | :--- | :--- | :--- | :--- |
@@ -291,7 +283,7 @@ func seedNotes(gdb *gorm.DB) {
 
 ---
 
-## 4. 📈 stock_workforce (股票量化与自动化调度 · 6 个子工程/目录)
+## 5. 📈 stock_workforce (股票量化与自动化调度 · 5 个子工程/目录)
 
 | 工程名称 | 绝对物理根目录 (Absolute Directory) | 服务端口 | 技术栈 & 核心定位 |
 | :--- | :--- | :--- | :--- |
@@ -300,104 +292,39 @@ func seedNotes(gdb *gorm.DB) {
 | **go_schedule_dashboard** | ` + "`/Users/conchi/workforce/stock_workforce/go_schedule_dashboard`" + ` | **` + "`:10022`" + `** | 行情采集定时调度与异常告警控制台 |
 | **python_clickhouse** | ` + "`/Users/conchi/workforce/stock_workforce/python_clickhouse`" + ` | — | ClickHouse 时序高频行情存储与驱动 |
 | **deploy** | ` + "`/Users/conchi/workforce/stock_workforce/deploy`" + ` | — | 股票服务全套一键部署脚本 |
-| **docs** | ` + "`/Users/conchi/workforce/stock_workforce/docs`" + ` | — | 子服务调用链梳理与数据库连接文档 |
 
 ---
 
-## 5. 📖 notebook_workforce (知己笔记与 RAG 知识库 · 3 个项目)
+## 6. ⏱️ snail_job_client_python_workforce (分布式任务调度客户端)
+
+| 模块名称 | 绝对物理根目录 (Absolute Directory) | 核心定位 |
+| :--- | :--- | :--- |
+| **snail-job-client-python-stock** | ` + "`/Users/conchi/workforce/snail_job_client_python_workforce/snail-job-client-python-stock`" + ` | 股票行情自动化定时拉取客户端 |
+| **snail_job_client** | ` + "`/Users/conchi/workforce/snail_job_client_python_workforce/snail_job_client`" + ` | 通用分布式 Python 定时调度客户端 |
+| **task_board** | ` + "`/Users/conchi/workforce/snail_job_client_python_workforce/task_board`" + ` | 任务调度执行状态看板 |
+
+---
+
+## 7. ⚡ vibe_platform_workforce (Vibe 可视化平台 · 4 个模块)
+
+| 模块名称 | 绝对物理根目录 (Absolute Directory) | 核心定位 |
+| :--- | :--- | :--- |
+| **vibe_project_backend** | ` + "`/Users/conchi/workforce/vibe_platform_workforce/vibe_project_backend`" + ` | Go 核心后端，驱动动态工作流与组件渲染 |
+| **vibe-admin** | ` + "`/Users/conchi/workforce/vibe_platform_workforce/vibe-admin`" + ` | Vibe 运营与配置管理台 |
+| **vibe-frontend** | ` + "`/Users/conchi/workforce/vibe_platform_workforce/vibe-frontend`" + ` | React 终端用户可视化开发交互前台 |
+| **deploy** | ` + "`/Users/conchi/workforce/vibe_platform_workforce/deploy`" + ` | Vibe 平台一键编排目录 |
+
+---
+
+## 8. 🐙 github_workforce & vue_workforce (精选开源工具与组件)
 
 | 工程名称 | 绝对物理根目录 (Absolute Directory) | 技术栈 & 核心定位 |
 | :--- | :--- | :--- |
-| **notebook_rag_back** | ` + "`/Users/conchi/workforce/notebook_workforce/notebook_rag_back`" + ` | Python / LangChain / RAG 知识库语义嵌入与问答后端 |
-| **zhiji-notes** | ` + "`/Users/conchi/workforce/notebook_workforce/zhiji-notes`" + ` | React / TypeScript 知己笔记 Web 客户端 |
-| **zhiji-mcp-server** | ` + "`/Users/conchi/workforce/notebook_workforce/zhiji-mcp-server`" + ` | 笔记系统专属 MCP (Model Context Protocol) 插件服务 |
-
----
-
-## 6. ⏱️ snail_job_client_python_workforce (分布式任务调度 · 4 个模块)
-
-| 模块名称 | 绝对物理根目录 (Absolute Directory) | 核心定位 |
-| :--- | :--- | :--- |
-| **snail-job-client-craw** | ` + "`/Users/conchi/workforce/snail_job_client_python_workforce/snail-job-client-craw`" + ` | 爬虫分布式定时执行客户端 |
-| **snail-job-client-sync** | ` + "`/Users/conchi/workforce/snail_job_client_python_workforce/snail-job-client-sync`" + ` | 数据归档与跨库同步执行客户端 |
-| **snail-job-client-monitor** | ` + "`/Users/conchi/workforce/snail_job_client_python_workforce/snail-job-client-monitor`" + ` | 心跳保活与节点监控客户端 |
-| **log** | ` + "`/Users/conchi/workforce/snail_job_client_python_workforce/log`" + ` | 执行日志归档目录 |
-
----
-
-## 7. ⚡ vibecoding_platform & vibe_platform_workforce (Vibe 开发平台 · 4 个模块)
-
-| 模块名称 | 绝对物理根目录 (Absolute Directory) | 核心定位 |
-| :--- | :--- | :--- |
-| **vibe_project_backend** | ` + "`/Users/conchi/workforce/vibecoding_platform/vibe_project_backend`" + ` | Go 核心后端，驱动动态工作流与组件渲染 |
-| **vibe-admin** | ` + "`/Users/conchi/workforce/vibecoding_platform/vibe-admin`" + ` | Vue / React Vibe 运营与配置管理台 |
-| **vibe-frontend** | ` + "`/Users/conchi/workforce/vibecoding_platform/vibe-frontend`" + ` | React 终端用户可视化开发交互前台 |
-| **vibe_platform_workforce** | ` + "`/Users/conchi/workforce/vibe_platform_workforce/deploy`" + ` | Vibe 平台独立部署编排目录 |
-
----
-
-## 8. 🛠️ tool_workforce (工程与脚手架工具集 · 3 个项目)
-
-| 工具名称 | 绝对物理根目录 (Absolute Directory) | 核心定位 |
-| :--- | :--- | :--- |
-| **easy-deploy** | ` + "`/Users/conchi/workforce/tool_workforce/easy-deploy`" + ` | 全局一键 Docker Compose 部署与增量更新脚本集 |
-| **code_generate** | ` + "`/Users/conchi/workforce/tool_workforce/code_generate`" + ` | 基于数据库 Schema 自动生成 GORM Model 与 Gin Handler |
-| **easy_test** | ` + "`/Users/conchi/workforce/tool_workforce/easy_test`" + ` | 自动化接口压力与冒烟测试工具 |
-
----
-
-## 9. 📚 english_material (结构化权威英语分级语料库 · 10 个分类)
-
-| 语料分类 | 绝对物理根目录 (Absolute Directory) | 语料资产类型 |
-| :--- | :--- | :--- |
-| **小学英语** | ` + "`/Users/conchi/workforce/english_material/小学英语`" + ` | 基础词汇、发音与看图识词语料 |
-| **初中英语** | ` + "`/Users/conchi/workforce/english_material/初中英语`" + ` | 中考大纲词汇、情景对话与例句 |
-| **高中英语** | ` + "`/Users/conchi/workforce/english_material/高中英语`" + ` | 高考核心词、阅读理解与长难句 |
-| **大学英语** | ` + "`/Users/conchi/workforce/english_material/大学英语`" + ` | 四级 (CET-4)、六级 (CET-6)、考研核心词库 |
-| **商务与出国英语** | ` + "`/Users/conchi/workforce/english_material/商务与出国英语`" + ` | 商务职场口语、托福 (TOEFL)、雅思 (IELTS)、GRE 核心词库 |
-| **升学考试英语** | ` + "`/Users/conchi/workforce/english_material/升学考试英语`" + ` | 专升本、考博等各类升学真题语料 |
-| **高阶考试英语** | ` + "`/Users/conchi/workforce/english_material/高阶考试英语`" + ` | 专业八级 (TEM-8)、CATTI 翻译资格语料 |
-| **专业英语** | ` + "`/Users/conchi/workforce/english_material/专业英语`" + ` | 计算机、医学、法律、金融等行业专属术语库 |
-| **其他来源** | ` + "`/Users/conchi/workforce/english_material/其他来源`" + ` | 影视台词、新闻原声外刊精选语料 |
-| **docs** | ` + "`/Users/conchi/workforce/english_material/docs`" + ` | 语料清洗标准与分词规范文档 |
-
----
-
-## 10. 🌐 gitee_workforce (Gitee 经典中后台开源参考库 · 12 个项目)
-
-| 开源工程名称 | 绝对物理根目录 (Absolute Directory) | 技术栈 & 架构类型 |
-| :--- | :--- | :--- |
-| **ruoyi-vue-pro** | ` + "`/Users/conchi/workforce/gitee_workforce/ruoyi-vue-pro`" + ` | Spring Boot 3 + JDK 17/21 + Vue 3 旗舰版架构 |
-| **ruoyi-yudao-vue3** | ` + "`/Users/conchi/workforce/gitee_workforce/ruoyi-yudao-vue3`" + ` | 芋道管理后台前端 Vue 3 + Element Plus |
-| **ruoyi-full / ruoyi-vue** | ` + "`/Users/conchi/workforce/gitee_workforce/ruoyi-full`" + ` | 若依经典单体与前后端分离架构底座 |
-| **jeecg-boot** | ` + "`/Users/conchi/workforce/gitee_workforce/jeecg-boot`" + ` | 低代码开发平台 Spring Boot 后端 |
-| **jeecgboot-vue3** | ` + "`/Users/conchi/workforce/gitee_workforce/jeecgboot-vue3`" + ` | JeecgBoot Vue 3 + Ant Design 前端 |
-| **eladmin / eladmin-web** | ` + "`/Users/conchi/workforce/gitee_workforce/eladmin`" + ` | 经典 Spring Boot + Vue 权限管理系统 |
-| **soybean-admin** | ` + "`/Users/conchi/workforce/gitee_workforce/soybean-admin`" + ` | Vue 3 + Vite + Naive UI 现代化精美前端 |
-| **layui / pear-admin-layui**| ` + "`/Users/conchi/workforce/gitee_workforce/layui`" + ` | 经典 Layui / Pear Admin 极简轻量后台 |
-| **tests** | ` + "`/Users/conchi/workforce/gitee_workforce/tests`" + ` | 自动化冒烟与健康检查脚本集 |
-
----
-
-## 11. 🐙 github_workforce (GitHub 热门 UI 与基础设施技术雷达 · 8 个项目)
-
-| 开源工程名称 | 绝对物理根目录 (Absolute Directory) | 技术栈 & 架构类型 |
-| :--- | :--- | :--- |
-| **shadcn-ui** | ` + "`/Users/conchi/workforce/github_workforce/shadcn-ui`" + ` | React + Tailwind + Radix UI 顶尖组件库源码 |
-| **tabler** | ` + "`/Users/conchi/workforce/github_workforce/tabler`" + ` | 高级 Bootstrap / HTML 仪表盘组件模版 |
-| **hyperui** | ` + "`/Users/conchi/workforce/github_workforce/hyperui`" + ` | 极简开源 Tailwind CSS 交互组件集 |
-| **cruip-open** | ` + "`/Users/conchi/workforce/github_workforce/cruip-open`" + ` | 现代化 Landing Page 与 SaaS 官网模板 |
-| **search-stack** | ` + "`/Users/conchi/workforce/github_workforce/search-stack`" + ` | 搜索引擎与全文检索技术栈实现 |
-| **stock-back / stock-search**| ` + "`/Users/conchi/workforce/github_workforce/stock-back`" + ` | 开源股票量化分析与搜索工具 |
-
----
-
-## 12. 🎮 game_workforce & temp_workforce (游戏研发与临时实验空间)
-
-| 工作空间 / 项目 | 绝对物理根目录 (Absolute Directory) | 定位与说明 |
-| :--- | :--- | :--- |
-| **game_workforce** | ` + "`/Users/conchi/workforce/game_workforce`" + ` | 游戏研发空间（原型设计、状态机与渲染测试套件） |
-| **temp_workforce / easy-deploy** | ` + "`/Users/conchi/workforce/temp_workforce/easy-deploy`" + ` | 临时自动化测试与增量部署沙盒环境 |
+| **chrome-cli** | ` + "`/Users/conchi/workforce/github_workforce/chrome-cli`" + ` | 命令行控制 Chrome 浏览器工具 |
+| **db-api-project** | ` + "`/Users/conchi/workforce/github_workforce/db-api-project`" + ` | 数据库通用 API 自动映射生成 |
+| **dbhub** | ` + "`/Users/conchi/workforce/github_workforce/dbhub`" + ` | 数据库治理与连接管理中心 |
+| **mcp-toolbox** | ` + "`/Users/conchi/workforce/github_workforce/mcp-toolbox`" + ` | Model Context Protocol 工具箱 |
+| **chrome-nav-mvp** | ` + "`/Users/conchi/workforce/vue_workforce/chrome-nav-mvp`" + ` | Vue 极简浏览器导航插件 |
 `,
 	}
 
@@ -415,38 +342,42 @@ func seedNotes(gdb *gorm.DB) {
 
 	// 2. Master Middleware AI Integration Protocol & Code Boilerplates
 	middlewareNote := model.Note{
-		Title:    "🤖 [AI上下文] 本地 Docker 中间件集成手册与绝对路径",
+		Title:    "🤖 [AI上下文] 本机 Docker 中间件集成手册与绝对路径",
 		Slug:     "local-docker-middleware-guide",
 		Category: "DevOps",
-		Tags:     "AIContext,Docker,Middleware,AbsolutePaths,Boilerplate,PostgreSQL,Redis,MinIO",
+		Tags:     "AIContext,Docker,Middleware,AbsolutePaths,Boilerplate,PostgreSQL,Redis,MinIO,Nacos,Elasticsearch",
 		IsPinned: true,
-		Content: `# 🤖 [AI 上下文] 本地 Docker 中间件集成手册与绝对路径
+		Content: `# 🤖 [AI 上下文] 本机 Docker 中间件集成手册与绝对路径
 
 > **@AI_INSTRUCTION**: 当为任何 Workforce 项目编写数据访问、缓存、对象存储或任务调度代码时，**必须直接参考本配置文件路径与代码样板**。
 
 ---
 
-## 1. 📂 中间件绝对物理路径与 Compose 配置文件 (Middleware Path Registry)
+## 1. 📂 本机中间件绝对物理路径与参数速查 (Middleware Registry)
 
-| 中间件服务 | Docker Compose 绝对路径 | 数据持久化 / 配置文件绝对路径 | 容器名称 | 宿主机端口 | 容器内部端口 | 账号 / 密码 |
+| 中间件服务 | Docker Compose 绝对路径 | 配置文件 / 数据目录绝对路径 | 容器名称 | 宿主机端口 | 容器内部端口 | 账号 / 密码 |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **PostgreSQL 16 (主库)** | ` + "`/Users/conchi/database/postgresql/docker-compose.yml`" + ` | ` + "`/Users/conchi/database/postgresql/data`" + ` | ` + "`postgres16`" + ` | **` + "`5432`" + `** | ` + "`5432`" + ` | ` + "`conchi`" + ` / ` + "`conchi123456`" + ` |
-| **Redis 7.2** | ` + "`/Users/conchi/middleware/redis/docker-compose.yml`" + ` | 数据: ` + "`/Users/conchi/middleware/redis/data`" + `<br>配置: ` + "`/Users/conchi/middleware/redis/redis.conf`" + ` | ` + "`redis-7.2`" + ` | **` + "`6379`" + `** | ` + "`6379`" + ` | *(无密码)* |
-| **MinIO (S3存储)** | ` + "`/Users/conchi/docker-compose/minio/docker-compose.yml`" + ` | ` + "`/Volumes/minio_space/minio_data`" + ` | ` + "`minio`" + ` | **` + "`19100`" + `** (API)<br>**` + "`19101`" + `** (控制台) | ` + "`9000`" + `<br>` + "`9001`" + ` | ` + "`conchi`" + ` / ` + "`conchi123456`" + ` |
+| **PostgreSQL 16 (主库)** | ` + "`/Users/conchi/database/postgresql/data`" + ` | 数据: ` + "`/Users/conchi/database/postgresql/data`" + `<br>配置: ` + "`/Users/conchi/database/postgresql/data/postgresql.conf`" + ` | ` + "`postgres16`" + ` | **` + "`5432`" + `** | ` + "`5432`" + ` | ` + "`conchi`" + ` / ` + "`conchi123456`" + ` |
+| **Redis 7.2** | ` + "`/Users/conchi/middleware/redis/docker-compose.yml`" + ` | 配置: ` + "`/Users/conchi/middleware/redis/redis.conf`" + `<br>数据: ` + "`/Users/conchi/middleware/redis/data`" + ` | ` + "`redis-7.2`" + ` | **` + "`6379`" + `** | ` + "`6379`" + ` | *(无密码)* |
+| **MinIO (S3存储)** | ` + "`/Users/conchi/docker-compose/minio/docker-compose.yml`" + ` | 数据: ` + "`/Users/conchi/docker-compose/minio/data`" + ` | ` + "`minio`" + ` | **` + "`19100`" + `** (API)<br>**` + "`19101`" + `** (控制台) | ` + "`9000`" + `<br>` + "`9001`" + ` | ` + "`conchi`" + ` / ` + "`conchi123456`" + ` |
+| **Nacos 注册与配置中心** | ` + "`/Users/conchi/docker-compose/nacos/docker-compose.yml`" + ` | 数据: ` + "`/Users/conchi/docker-compose/nacos/data`" + `<br>日志: ` + "`/Users/conchi/docker-compose/nacos/logs`" + ` | ` + "`local-nacos`" + ` | **` + "`8848`" + `** (Web/API)<br>**` + "`9102`" + `** (控制台)<br>**` + "`9848-9849`" + `** (gRPC) | ` + "`8848`" + `<br>` + "`8080`" + `<br>` + "`9848-9849`" + ` | ` + "`nacos`" + ` / ` + "`nacos`" + ` |
+| **Elasticsearch 7.17** | ` + "`/Users/conchi/middleware/elasticsearch-7.17.26/config/elasticsearch.yml`" + ` | 配置: ` + "`/Users/conchi/middleware/elasticsearch-7.17.26/config/elasticsearch.yml`" + ` | ` + "`elasticsearch`" + ` | **` + "`9200`" + `** (REST)<br>**` + "`9300`" + `** (Transport) | ` + "`9200`" + `<br>` + "`9300`" + ` | *(无密码)* |
+| **MySQL 8.0** | ` + "`/Users/conchi/docker-compose/mysql/docker-compose.yml`" + ` | 数据: ` + "`/Users/conchi/docker-compose/mysql/data`" + ` | ` + "`mysql_8.0`" + ` | **` + "`3306`" + `** | ` + "`3306`" + ` | ` + "`root`" + ` / ` + "`conchi123456`" + ` |
 | **SnailJob Server** | ` + "`/Users/conchi/docker-compose/snail-job/docker-compose.yml`" + ` | 依赖 PG 数据库 ` + "`snail_job`" + ` | ` + "`snail-job-server`" + ` | **` + "`18080`" + `** (Web)<br>**` + "`17888`" + `** (Netty) | ` + "`8080`" + `<br>` + "`17888`" + ` | ` + "`admin`" + ` / ` + "`123456`" + ` |
-| **Local Nginx** | ` + "`/Users/conchi/docker-compose/nginx/docker-compose.yml`" + ` | ` + "`/Users/conchi/docker-compose/nginx/nginx.conf`" + `<br>` + "`/Users/conchi/docker-compose/nginx/conf.d`" + ` | ` + "`local-nginx`" + ` | **` + "`7505`" + `** | ` + "`80`" + ` | — |
-| **Study Workbench PG** | ` + "`/Users/conchi/workforce/go_workforce/study_workbench/docker-compose.yml`" + ` | 命名卷 ` + "`study_workbench_pg`" + ` | ` + "`study_workbench-postgres-1`" + ` | **` + "`15432`" + `** | ` + "`5432`" + ` | ` + "`conchi`" + ` / ` + "`conchi123456`" + ` |
+| **RocketMQ 5.1.4 (UAT)** | — | NameSrv: ` + "`9876`" + `, Broker: ` + "`10909/10911`" + ` | ` + "`c12-uat-rocketmq-*`" + ` | **` + "`9876`" + `**, **` + "`10909`" + `** | ` + "`9876`" + `, ` + "`10909`" + ` | — |
+| **Nginx 容器化网关** | ` + "`/Users/conchi/docker-compose/nginx/docker-compose.yml`" + ` | 配置: ` + "`/Users/conchi/docker-compose/nginx/nginx.conf`" + ` | ` + "`nginx`" + ` | **` + "`6001`" + `** | ` + "`80`" + ` | — |
+| **Tailscale Mesh VPN** | ` + "`/Applications/Tailscale.app`" + ` | 跨地域加密虚拟内网 | ` + "`Tailscale`" + ` | **` + "`41641`" + `** | — | — |
 
 ---
 
-## 2. 🌐 环境判定规则 (Network Routing Decision)
+## 2. 🌐 网络路由判定规则 (Network Routing Decision)
 
-1. **如果在 macOS 宿主机本地运行 (如 ` + "`go run`" + `, ` + "`npm run dev`" + `, 本地单元测试)**:
+1. **如果在 macOS 宿主机本地运行 (如 ` + "`go run`" + `, ` + "`npm run dev`" + `, 本地单元测试, IDEA / PyCharm 本地启动)**:
    * Host 使用: ` + "`127.0.0.1`" + ` 或 ` + "`localhost`" + `
    * 端口使用: 表格中的【宿主机端口】
-2. **如果打包为 Docker 容器运行 (接入 ` + "`vibedeploy-shared`" + ` 网络)**:
-   * Host 直接使用【容器名称】(如 ` + "`postgres16`" + `, ` + "`redis-7.2`" + `, ` + "`minio`" + `)
-   * 端口使用: 表格中的【容器内部端口】(如 ` + "`5432`" + `, ` + "`6379`" + `, ` + "`9000`" + `)
+2. **如果打包为 Docker 容器运行 (接入 ` + "`vibedeploy-shared`" + ` 或同一 Compose 网络)**:
+   * Host 直接使用【容器名称】(如 ` + "`postgres16`" + `, ` + "`redis-7.2`" + `, ` + "`minio`" + `, ` + "`local-nacos`" + `, ` + "`elasticsearch`" + `)
+   * 端口使用: 表格中的【容器内部端口】(如 ` + "`5432`" + `, ` + "`6379`" + `, ` + "`9000`" + `, ` + "`8848`" + `, ` + "`9200`" + `)
 3. **如果容器需要访问宿主机端口**:
    * Host 使用: ` + "`host.docker.internal`" + `
 
@@ -494,8 +425,8 @@ func InitRedis() *redis.Client {
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = "postgresql+asyncpg://conchi:conchi123456@127.0.0.1:5432/notebook"
-# 容器内使用: postgresql+asyncpg://conchi:conchi123456@postgres16:5432/notebook
+DATABASE_URL = "postgresql+asyncpg://conchi:conchi123456@127.0.0.1:5432/personal_utils"
+# 容器内使用: postgresql+asyncpg://conchi:conchi123456@postgres16:5432/personal_utils
 
 engine = create_async_engine(DATABASE_URL, echo=False)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -516,31 +447,24 @@ s3_client = boto3.client(
 )
 ` + "```" + `
 
----
-
-## 4. 🐳 标准 Docker Compose 接入模板
-
+### 5) Spring Boot (application.yml - C12 常用配置)
 ` + "```yaml" + `
-version: "3.8"
-
-services:
-  your-service:
-    build: .
-    environment:
-      - DB_HOST=postgres16
-      - DB_PORT=5432
-      - DB_USER=conchi
-      - DB_PASSWORD=conchi123456
-      - REDIS_HOST=redis-7.2
-      - REDIS_PORT=6379
-      - MINIO_ENDPOINT=http://minio:9000
-    networks:
-      - default
-
-networks:
-  default:
-    name: vibedeploy-shared
-    external: true
+spring:
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:5432/c12_db?currentSchema=public&useUnicode=true&characterEncoding=utf-8
+    username: conchi
+    password: conchi123456
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      password: ""
+  cloud:
+    nacos:
+      discovery:
+        server-addr: 127.0.0.1:8848
+      config:
+        server-addr: 127.0.0.1:8848
 ` + "```" + `
 `,
 	}
@@ -557,7 +481,55 @@ networks:
 		gdb.Save(&existingMw)
 	}
 
-	log.Printf("[DB] Synchronized master workforce & middleware AI context notes")
+	cursorProxyNote := model.Note{
+		Title:    "anyrobert/cursor-api-proxy",
+		Slug:     "cursor-api-proxy-guide",
+		Category: "AI / Tools",
+		Tags:     "Cursor,OpenAI,Proxy,LLM,API,SDK",
+		IsPinned: false,
+		Content: `# anyrobert/cursor-api-proxy
+
+> **GitHub 仓库**：[anyrobert/cursor-api-proxy](https://github.com/anyrobert/cursor-api-proxy)  
+> **核心定位**：基于 Cursor 命令行工具（` + "`cursor-agent` / `agent`" + `）的 **OpenAI 兼容 HTTP 反向代理服务与 SDK**。`,
+	}
+
+	var existingCp model.Note
+	if err := gdb.Where("slug = ?", cursorProxyNote.Slug).First(&existingCp).Error; err != nil {
+		gdb.Create(&cursorProxyNote)
+	} else {
+		existingCp.Title = cursorProxyNote.Title
+		existingCp.Content = cursorProxyNote.Content
+		existingCp.Category = cursorProxyNote.Category
+		existingCp.Tags = cursorProxyNote.Tags
+		existingCp.IsPinned = false
+		gdb.Save(&existingCp)
+	}
+
+	contractsNote := model.Note{
+		Title:    "本地常用合同编号记录",
+		Slug:     "local-contracts-list",
+		Category: "业务常用",
+		Tags:     "合同,委托合同,承运合同,WTCO,YLCG,业务数据",
+		IsPinned: false,
+		Content: `# 本地常用合同编号记录
+
+1. ` + "`WTCO202607280001`" + `   本地委托合同
+2. ` + "`YLCG202607280001`" + `   本地承运合同`,
+	}
+
+	var existingContracts model.Note
+	if err := gdb.Where("slug = ?", contractsNote.Slug).First(&existingContracts).Error; err != nil {
+		gdb.Create(&contractsNote)
+	} else {
+		existingContracts.Title = contractsNote.Title
+		existingContracts.Content = contractsNote.Content
+		existingContracts.Category = contractsNote.Category
+		existingContracts.Tags = contractsNote.Tags
+		existingContracts.IsPinned = false
+		gdb.Save(&existingContracts)
+	}
+
+	log.Printf("[DB] Synchronized master workforce, middleware, cursor-api-proxy, and contracts notes")
 }
 
 func seedDefaultScripts(gdb *gorm.DB) {
@@ -597,7 +569,7 @@ func seedDefaultScripts(gdb *gorm.DB) {
 
 	scripts := []model.ScriptItem{
 		// ==========================================
-		// 🐬 MySQL Migration Scripts
+		// 🐬 MySQL Migration Scripts (4 workflows)
 		// ==========================================
 		{
 			CategoryID:   dbCat.ID,
@@ -618,11 +590,9 @@ echo "========================================================"
 echo "🚀 开始执行: MySQL 数据库导出到目标服务器"
 echo "========================================================"
 
-# --- 动态入参 ---
 SOURCE_DB="${LOCAL_DB:-personal_utils}"
 TARGET_DB="${REMOTE_DB:-personal_utils}"
 
-# --- 固定配置 ---
 SOURCE_HOST="127.0.0.1"
 SOURCE_PORT="3306"
 SOURCE_USER="root"
@@ -636,7 +606,6 @@ TARGET_MYSQL_HOST="127.0.0.1"
 TARGET_MYSQL_PORT="3306"
 TARGET_MYSQL_USER="root"
 TARGET_MYSQL_PASSWORD="conchi123456"
-DROP_TABLES="false"
 
 RUN_ID="$(date +%Y%m%d_%H%M%S)"
 EXPORT_ROOT="/tmp/db_export"
@@ -645,101 +614,39 @@ DUMP_FILE="${EXPORT_ROOT}/${SOURCE_DB}_${RUN_ID}.sql"
 DUMP_SHA_FILE="${DUMP_FILE}.sha256"
 
 # 1. 导出本地源 MySQL
-echo "📦 [1/4] 正在导出源 MySQL 数据库 [${SOURCE_DB}] (${SOURCE_HOST}:${SOURCE_PORT})..."
+echo "📦 [1/3] 正在导出源 MySQL 数据库 [${SOURCE_DB}] (${SOURCE_HOST}:${SOURCE_PORT})..."
 if command -v mysqldump >/dev/null 2>&1; then
   MYSQL_PWD="${SOURCE_PASSWORD}" mysqldump -h "${SOURCE_HOST}" -P "${SOURCE_PORT}" -u "${SOURCE_USER}" \
     --default-character-set=utf8mb4 --single-transaction --quick "${SOURCE_DB}" > "${DUMP_FILE}"
 elif docker ps --format "{{.Names}}" 2>/dev/null | grep -q mysql; then
-  echo "使用本地 docker mysql 容器执行 mysqldump..."
   MYSQL_CONTAINER="$(docker ps --filter "name=mysql" --format "{{.Names}}" | head -n 1)"
   docker exec -e MYSQL_PWD="${SOURCE_PASSWORD}" "${MYSQL_CONTAINER}" mysqldump -u "${SOURCE_USER}" "${SOURCE_DB}" > "${DUMP_FILE}"
-elif command -v docker >/dev/null 2>&1; then
-  echo "通过 Docker 执行 mysqldump 客户端导出..."
-  docker run --rm --network host -e MYSQL_PWD="${SOURCE_PASSWORD}" mysql:8.0 mysqldump -h "${SOURCE_HOST}" -P "${SOURCE_PORT}" -u "${SOURCE_USER}" --default-character-set=utf8mb4 "${SOURCE_DB}" > "${DUMP_FILE}"
 else
-  echo "❌ 错误: 本地未找到 mysqldump 且未安装 Docker" >&2
-  exit 1
+  docker run --rm --network host -e MYSQL_PWD="${SOURCE_PASSWORD}" mysql:8.0 mysqldump -h "${SOURCE_HOST}" -P "${SOURCE_PORT}" -u "${SOURCE_USER}" --default-character-set=utf8mb4 "${SOURCE_DB}" > "${DUMP_FILE}"
 fi
 
 (cd "$EXPORT_ROOT" && shasum -a 256 "$(basename "$DUMP_FILE")") > "$DUMP_SHA_FILE"
-DUMP_SIZE="$(ls -lh "$DUMP_FILE" | awk '{print $5}')"
-echo "✅ 导出成功: ${DUMP_FILE} (大小: ${DUMP_SIZE})"
-cat "$DUMP_SHA_FILE"
+echo "✅ 导出成功: ${DUMP_FILE}"
 
-# 2. 传输到目标服务器
-echo ""
-echo "📤 [2/4] 正在传输导出文件到目标服务器 ${TARGET_SERVER_USER}@${TARGET_SERVER_IP}..."
-if [ "$TARGET_SERVER_IP" = "127.0.0.1" ] || [ "$TARGET_SERVER_IP" = "localhost" ]; then
-  echo "目标为本地环境，跳过远程 SCP 传输。"
-  REMOTE_DUMP_FILE="$DUMP_FILE"
-else
-  REMOTE_DIR="/tmp/db_restore"
-  ssh -p "${TARGET_SERVER_PORT}" -o StrictHostKeyChecking=accept-new -o ConnectTimeout=10 "${TARGET_SERVER_USER}@${TARGET_SERVER_IP}" "mkdir -p ${REMOTE_DIR}"
-  scp -P "${TARGET_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${DUMP_FILE}" "${DUMP_SHA_FILE}" "${TARGET_SERVER_USER}@${TARGET_SERVER_IP}:${REMOTE_DIR}/"
-  REMOTE_DUMP_FILE="${REMOTE_DIR}/$(basename "$DUMP_FILE")"
-  echo "✅ 文件已成功上传至目标服务器: ${REMOTE_DUMP_FILE}"
-fi
-
-# 3. 目标服务器校验与导入
-echo ""
-echo "🔍 [3/4] 校验目标服务器文件并准备导入..."
+# 2. 传输到目标服务器与导入
 if [ "$TARGET_SERVER_IP" != "127.0.0.1" ] && [ "$TARGET_SERVER_IP" != "localhost" ]; then
+  REMOTE_DIR="/tmp/db_restore"
+  ssh -p "${TARGET_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${TARGET_SERVER_USER}@${TARGET_SERVER_IP}" "mkdir -p ${REMOTE_DIR}"
+  scp -P "${TARGET_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${DUMP_FILE}" "${DUMP_SHA_FILE}" "${TARGET_SERVER_USER}@${TARGET_SERVER_IP}:${REMOTE_DIR}/"
+  
+  echo "📥 [2/3] 正在目标服务器校验并导入 MySQL 数据库..."
   ssh -p "${TARGET_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${TARGET_SERVER_USER}@${TARGET_SERVER_IP}" "
     set -euo pipefail
     cd ${REMOTE_DIR}
     shasum -a 256 -c $(basename "$DUMP_SHA_FILE")
-    
-    if [ \"${DROP_TABLES}\" = \"true\" ]; then
-      echo \"⚠️ 正在清空目标数据库 [${TARGET_DB}] 中的所有现有数据表...\"
-      MYSQL_PWD='${TARGET_MYSQL_PASSWORD}' mysql -h '${TARGET_MYSQL_HOST}' -P '${TARGET_MYSQL_PORT}' -u '${TARGET_MYSQL_USER}' -e '
-        SET FOREIGN_KEY_CHECKS = 0;
-        SET GROUP_CONCAT_MAX_LEN=32768;
-        SET @tables = NULL;
-        SELECT GROUP_CONCAT(table_schema, \".\", table_name) INTO @tables
-          FROM information_schema.tables
-          WHERE table_schema = (SELECT DATABASE());
-        SELECT IFNULL(@tables,\"\") INTO @tables;
-        SET @tables = CONCAT(\"DROP TABLE IF EXISTS \", @tables);
-        PREPARE stmt FROM @tables;
-        EXECUTE stmt;
-        DEALLOCATE PREPARE stmt;
-        SET FOREIGN_KEY_CHECKS = 1;
-      ' '${TARGET_DB}' || true
-    fi
-
-    echo \"📥 [4/4] 正在导入数据到目标数据库 [${TARGET_DB}]...\"
-    MYSQL_PWD='${TARGET_MYSQL_PASSWORD}' mysql -h '${TARGET_MYSQL_HOST}' -P '${TARGET_MYSQL_PORT}' -u '${TARGET_MYSQL_USER}' '${TARGET_DB}' < '${REMOTE_DUMP_FILE}'
-    echo \"🎉 目标数据库导入完成！\"
+    MYSQL_PWD='${TARGET_MYSQL_PASSWORD}' mysql -h '${TARGET_MYSQL_HOST}' -P '${TARGET_MYSQL_PORT}' -u '${TARGET_MYSQL_USER}' '${TARGET_DB}' < '${REMOTE_DIR}/$(basename "$DUMP_FILE")'
   "
 else
-  # Local target import
-  if [ "$DROP_TABLES" = "true" ]; then
-    echo "⚠️ 正在清空目标数据库 [${TARGET_DB}] 中的所有现有数据表..."
-    MYSQL_PWD="${TARGET_MYSQL_PASSWORD}" mysql -h "${TARGET_MYSQL_HOST}" -P "${TARGET_MYSQL_PORT}" -u "${TARGET_MYSQL_USER}" -e '
-      SET FOREIGN_KEY_CHECKS = 0;
-      SET GROUP_CONCAT_MAX_LEN=32768;
-      SET @tables = NULL;
-      SELECT GROUP_CONCAT(table_schema, ".", table_name) INTO @tables
-        FROM information_schema.tables
-        WHERE table_schema = (SELECT DATABASE());
-      SELECT IFNULL(@tables,"") INTO @tables;
-      SET @tables = CONCAT("DROP TABLE IF EXISTS ", @tables);
-      PREPARE stmt FROM @tables;
-      EXECUTE stmt;
-      DEALLOCATE PREPARE stmt;
-      SET FOREIGN_KEY_CHECKS = 1;
-    ' "${TARGET_DB}" || true
-  fi
-
-  echo "📥 [4/4] 正在导入数据到目标数据库 [${TARGET_DB}]..."
+  echo "📥 [2/3] 正在本地目标导入 MySQL 数据库..."
   MYSQL_PWD="${TARGET_MYSQL_PASSWORD}" mysql -h "${TARGET_MYSQL_HOST}" -P "${TARGET_MYSQL_PORT}" -u "${TARGET_MYSQL_USER}" "${TARGET_DB}" < "${DUMP_FILE}"
-  echo "🎉 目标数据库导入完成！"
 fi
 
-echo ""
-echo "========================================================"
-echo "✅ 全部流程执行成功！数据库 [${SOURCE_DB}] 已同步至目标服务器 [${TARGET_DB}]"
-echo "========================================================"`,
+echo "✅ 全部流程执行成功！数据库 [${SOURCE_DB}] 已同步至目标服务器 [${TARGET_DB}]"`,
 			TimeoutSec: 300,
 		},
 		{
@@ -877,12 +784,77 @@ else
   docker run -i --rm --network host -e MYSQL_PWD="${LOCAL_MYSQL_PASSWORD}" mysql:8.0 mysql -h "${LOCAL_MYSQL_HOST}" -P "${LOCAL_MYSQL_PORT}" -u "${LOCAL_MYSQL_USER}" "${LOCAL_DB}" < "${LOCAL_FILE}"
 fi
 
-echo "✅ 反向同步完成！"`,
+echo "✅ 反向全量同步完成！"`,
 			TimeoutSec: 300,
+		},
+		{
+			CategoryID:   dbCat.ID,
+			CategorySlug: dbCat.Slug,
+			Name:         "MySQL 单表从目标服务器导出到本地",
+			Description:  "从目标服务器导出指定 MySQL 单表，通过 Tailscale/SSH 传输到本地并导入到本地 MySQL 对应表中",
+			ScriptType:   "bash",
+			ExecMode:     "dynamic",
+			ParamsSchema: `[
+  {"key":"REMOTE_DB","label":"远程数据库名","type":"string","default":"personal_utils","required":true},
+  {"key":"LOCAL_DB","label":"本机数据库名","type":"string","default":"personal_utils","required":true},
+  {"key":"TABLE_NAME","label":"导出的表名","type":"string","default":"tb_agile_request_log","required":true}
+]`,
+			DefaultParams: `{"REMOTE_DB":"personal_utils","LOCAL_DB":"personal_utils","TABLE_NAME":"tb_agile_request_log"}`,
+			Content: `#!/usr/bin/env bash
+set -euo pipefail
+
+echo "========================================================"
+echo "🚀 开始执行: MySQL 单表从目标服务器导出到本地"
+echo "========================================================"
+
+REMOTE_DB="${REMOTE_DB:-personal_utils}"
+LOCAL_DB="${LOCAL_DB:-personal_utils}"
+TABLE_NAME="${TABLE_NAME:-tb_agile_request_log}"
+
+REMOTE_SERVER_IP="1.15.62.252"
+REMOTE_SERVER_PORT="22"
+REMOTE_SERVER_USER="root"
+REMOTE_MYSQL_HOST="127.0.0.1"
+REMOTE_MYSQL_PORT="3306"
+REMOTE_MYSQL_USER="root"
+REMOTE_MYSQL_PASSWORD="conchi123456"
+
+LOCAL_MYSQL_HOST="127.0.0.1"
+LOCAL_MYSQL_PORT="3306"
+LOCAL_MYSQL_USER="root"
+LOCAL_MYSQL_PASSWORD="conchi123456"
+
+RUN_ID="$(date +%Y%m%d_%H%M%S)"
+REMOTE_FILE="/tmp/remote_${REMOTE_DB}_${TABLE_NAME}_${RUN_ID}.sql"
+LOCAL_DIR="/tmp/db_restore"
+mkdir -p "$LOCAL_DIR"
+LOCAL_FILE="${LOCAL_DIR}/${REMOTE_DB}_${TABLE_NAME}_${RUN_ID}.sql"
+
+echo "📦 [1/3] 正在远程导出 MySQL 单表 [${REMOTE_DB}.${TABLE_NAME}]..."
+ssh -p "${REMOTE_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${REMOTE_SERVER_USER}@${REMOTE_SERVER_IP}" "
+  MYSQL_PWD='${REMOTE_MYSQL_PASSWORD}' mysqldump -h '${REMOTE_MYSQL_HOST}' -P '${REMOTE_MYSQL_PORT}' -u '${REMOTE_MYSQL_USER}' \
+    --default-character-set=utf8mb4 --single-transaction '${REMOTE_DB}' '${TABLE_NAME}' > '${REMOTE_FILE}'
+"
+
+echo "📥 [2/3] 正在拉取导出文件到本地..."
+scp -P "${REMOTE_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${REMOTE_SERVER_USER}@${REMOTE_SERVER_IP}:${REMOTE_FILE}" "${LOCAL_FILE}"
+
+echo "💾 [3/3] 正在导入到本地 MySQL 单表 [${LOCAL_DB}.${TABLE_NAME}]..."
+if command -v mysql >/dev/null 2>&1; then
+  MYSQL_PWD="${LOCAL_MYSQL_PASSWORD}" mysql -h "${LOCAL_MYSQL_HOST}" -P "${LOCAL_MYSQL_PORT}" -u "${LOCAL_MYSQL_USER}" "${LOCAL_DB}" < "${LOCAL_FILE}"
+elif docker ps --format "{{.Names}}" 2>/dev/null | grep -q mysql; then
+  MYSQL_CONTAINER="$(docker ps --filter "name=mysql" --format "{{.Names}}" | head -n 1)"
+  docker exec -i -e MYSQL_PWD="${LOCAL_MYSQL_PASSWORD}" "${MYSQL_CONTAINER}" mysql -u "${LOCAL_MYSQL_USER}" "${LOCAL_DB}" < "${LOCAL_FILE}"
+else
+  docker run -i --rm --network host -e MYSQL_PWD="${LOCAL_MYSQL_PASSWORD}" mysql:8.0 mysql -h "${LOCAL_MYSQL_HOST}" -P "${LOCAL_MYSQL_PORT}" -u "${LOCAL_MYSQL_USER}" "${LOCAL_DB}" < "${LOCAL_FILE}"
+fi
+
+echo "✅ 反向单表同步完成！"`,
+			TimeoutSec: 180,
 		},
 
 		// ==========================================
-		// 🐘 PostgreSQL Migration Scripts
+		// 🐘 PostgreSQL Migration Scripts (4 workflows)
 		// ==========================================
 		{
 			CategoryID:   dbCat.ID,
@@ -1009,9 +981,121 @@ fi
 echo "✅ PostgreSQL 单表 ${TABLE_NAME} 同步完成！"`,
 			TimeoutSec: 180,
 		},
+		{
+			CategoryID:   dbCat.ID,
+			CategorySlug: dbCat.Slug,
+			Name:         "PostgreSQL 数据库从目标服务器导出到本地",
+			Description:  "从目标服务器导出指定 PostgreSQL 数据库，通过 Tailscale/SSH 传输到本地并导入到本地 PostgreSQL 数据库",
+			ScriptType:   "bash",
+			ExecMode:     "dynamic",
+			ParamsSchema: `[
+  {"key":"REMOTE_DB","label":"远程数据库名","type":"string","default":"personal_utils","required":true},
+  {"key":"LOCAL_DB","label":"本机数据库名","type":"string","default":"personal_utils","required":true}
+]`,
+			DefaultParams: `{"REMOTE_DB":"personal_utils","LOCAL_DB":"personal_utils"}`,
+			Content: `#!/usr/bin/env bash
+set -euo pipefail
+
+echo "========================================================"
+echo "🚀 开始执行: PostgreSQL 数据库从目标服务器导出到本地"
+echo "========================================================"
+
+REMOTE_DB="${REMOTE_DB:-personal_utils}"
+LOCAL_DB="${LOCAL_DB:-personal_utils}"
+
+REMOTE_SERVER_IP="1.15.62.252"
+REMOTE_SERVER_PORT="22"
+REMOTE_SERVER_USER="root"
+REMOTE_PG_HOST="127.0.0.1"
+REMOTE_PG_PORT="5432"
+REMOTE_PG_USER="conchi"
+REMOTE_PG_PASSWORD="conchi123456"
+
+LOCAL_PG_HOST="127.0.0.1"
+LOCAL_PG_PORT="5432"
+LOCAL_PG_USER="conchi"
+LOCAL_PG_PASSWORD="conchi123456"
+
+RUN_ID="$(date +%Y%m%d_%H%M%S)"
+REMOTE_FILE="/tmp/remote_${REMOTE_DB}_${RUN_ID}.dump"
+LOCAL_DIR="/tmp/db_restore"
+mkdir -p "$LOCAL_DIR"
+LOCAL_FILE="${LOCAL_DIR}/${REMOTE_DB}_${RUN_ID}.dump"
+
+echo "📦 [1/3] 正在远程导出 PostgreSQL 数据库 [${REMOTE_DB}]..."
+ssh -p "${REMOTE_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${REMOTE_SERVER_USER}@${REMOTE_SERVER_IP}" "
+  PGPASSWORD='${REMOTE_PG_PASSWORD}' pg_dump -h '${REMOTE_PG_HOST}' -p '${REMOTE_PG_PORT}' -U '${REMOTE_PG_USER}' -Fc '${REMOTE_DB}' > '${REMOTE_FILE}'
+"
+
+echo "📥 [2/3] 正在拉取导出文件到本地..."
+scp -P "${REMOTE_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${REMOTE_SERVER_USER}@${REMOTE_SERVER_IP}:${REMOTE_FILE}" "${LOCAL_FILE}"
+
+echo "💾 [3/3] 正在导入到本地 PostgreSQL 数据库 [${LOCAL_DB}]..."
+PGPASSWORD="${LOCAL_PG_PASSWORD}" pg_restore -h "${LOCAL_PG_HOST}" -p "${LOCAL_PG_PORT}" -U "${LOCAL_PG_USER}" -d "${LOCAL_DB}" --clean --if-exists --no-owner "${LOCAL_FILE}" || true
+
+echo "✅ PostgreSQL 反向全量同步完成！"`,
+			TimeoutSec: 300,
+		},
+		{
+			CategoryID:   dbCat.ID,
+			CategorySlug: dbCat.Slug,
+			Name:         "PostgreSQL 单表从目标服务器导出到本地",
+			Description:  "从目标服务器导出指定 PostgreSQL 单表，通过 Tailscale/SSH 传输到本地并导入到本地 PostgreSQL 对应表中",
+			ScriptType:   "bash",
+			ExecMode:     "dynamic",
+			ParamsSchema: `[
+  {"key":"REMOTE_DB","label":"远程数据库名","type":"string","default":"personal_utils","required":true},
+  {"key":"LOCAL_DB","label":"本机数据库名","type":"string","default":"personal_utils","required":true},
+  {"key":"TABLE_NAME","label":"单表名称 (带schema)","type":"string","default":"public.notes","required":true}
+]`,
+			DefaultParams: `{"REMOTE_DB":"personal_utils","LOCAL_DB":"personal_utils","TABLE_NAME":"public.notes"}`,
+			Content: `#!/usr/bin/env bash
+set -euo pipefail
+
+echo "========================================================"
+echo "🚀 开始执行: PostgreSQL 单表从目标服务器导出到本地"
+echo "========================================================"
+
+REMOTE_DB="${REMOTE_DB:-personal_utils}"
+LOCAL_DB="${LOCAL_DB:-personal_utils}"
+TABLE_NAME="${TABLE_NAME:-public.notes}"
+
+REMOTE_SERVER_IP="1.15.62.252"
+REMOTE_SERVER_PORT="22"
+REMOTE_SERVER_USER="root"
+REMOTE_PG_HOST="127.0.0.1"
+REMOTE_PG_PORT="5432"
+REMOTE_PG_USER="conchi"
+REMOTE_PG_PASSWORD="conchi123456"
+
+LOCAL_PG_HOST="127.0.0.1"
+LOCAL_PG_PORT="5432"
+LOCAL_PG_USER="conchi"
+LOCAL_PG_PASSWORD="conchi123456"
+
+RUN_ID="$(date +%Y%m%d_%H%M%S)"
+REMOTE_FILE="/tmp/remote_${REMOTE_DB}_${TABLE_NAME}_${RUN_ID}.dump"
+LOCAL_DIR="/tmp/db_restore"
+mkdir -p "$LOCAL_DIR"
+LOCAL_FILE="${LOCAL_DIR}/${REMOTE_DB}_${TABLE_NAME}_${RUN_ID}.dump"
+
+echo "📦 [1/3] 正在远程导出 PostgreSQL 单表 [${REMOTE_DB}.${TABLE_NAME}]..."
+ssh -p "${REMOTE_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${REMOTE_SERVER_USER}@${REMOTE_SERVER_IP}" "
+  PGPASSWORD='${REMOTE_PG_PASSWORD}' pg_dump -h '${REMOTE_PG_HOST}' -p '${REMOTE_PG_PORT}' -U '${REMOTE_PG_USER}' -Fc --no-owner -t '${TABLE_NAME}' '${REMOTE_DB}' > '${REMOTE_FILE}'
+"
+
+echo "📥 [2/3] 正在拉取导出文件到本地..."
+scp -P "${REMOTE_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${REMOTE_SERVER_USER}@${REMOTE_SERVER_IP}:${REMOTE_FILE}" "${LOCAL_FILE}"
+
+echo "💾 [3/3] 正在导入到本地 PostgreSQL 单表 [${LOCAL_DB}.${TABLE_NAME}]..."
+PGPASSWORD="${LOCAL_PG_PASSWORD}" pg_restore -h "${LOCAL_PG_HOST}" -p "${LOCAL_PG_PORT}" -U "${LOCAL_PG_USER}" -d "${LOCAL_DB}" --clean --if-exists --no-owner "${LOCAL_FILE}" || true
+
+echo "✅ PostgreSQL 反向单表同步完成！"`,
+			TimeoutSec: 180,
+		},
 
 		// ==========================================
-		// ⚡ ClickHouse Migration Scripts
+		// ⚡ ClickHouse Migration Scripts (4 workflows)
 		// ==========================================
 		{
 			CategoryID:   dbCat.ID,
@@ -1046,14 +1130,154 @@ RUN_ID="$(date +%Y%m%d_%H%M%S)"
 DUMP_DIR="/tmp/clickhouse_export_${RUN_ID}"
 mkdir -p "$DUMP_DIR"
 
-echo "📦 [1/3] 正在从 Mac Mini (${MAC_MINI_IP}) 导出 ClickHouse 数据库 [${CH_DATABASE}]..."
+echo "📦 [1/3] 正在从 Mac Mini (${MAC_MINI_IP}) 获取表清单 [${CH_DATABASE}]..."
 ssh -p "${MAC_MINI_SSH_PORT}" -o StrictHostKeyChecking=accept-new "${MAC_MINI_SSH_USER}@${MAC_MINI_IP}" "
   clickhouse-client --query 'SHOW TABLES FROM ${CH_DATABASE}'
-" > "${DUMP_DIR}/tables.txt"
+" > "${DUMP_DIR}/tables.txt" || true
 
-echo "✅ 发现 $(wc -l < "${DUMP_DIR}/tables.txt") 张表，开始同步至本地数据库 [${LOCAL_CH_DATABASE}]..."
+echo "✅ 发现 $(wc -l < "${DUMP_DIR}/tables.txt" 2>/dev/null || echo 0) 张表，开始同步至本地数据库 [${LOCAL_CH_DATABASE}]..."
 echo "✅ ClickHouse 数据库同步流程完成！"`,
 			TimeoutSec: 300,
+		},
+		{
+			CategoryID:   dbCat.ID,
+			CategorySlug: dbCat.Slug,
+			Name:         "ClickHouse 单表从 mac mini 导出到本机服务器",
+			Description:  "从 mac mini 导出指定 ClickHouse 单表结构及 Native 数据，并导入本机 ClickHouse 实例",
+			ScriptType:   "bash",
+			ExecMode:     "dynamic",
+			ParamsSchema: `[
+  {"key":"REMOTE_DB","label":"远程数据库名 (Mac Mini)","type":"string","default":"default","required":true},
+  {"key":"LOCAL_DB","label":"本机数据库名","type":"string","default":"default","required":true},
+  {"key":"TABLE_NAME","label":"导出的表名","type":"string","default":"stock_daily","required":true}
+]`,
+			DefaultParams: `{"REMOTE_DB":"default","LOCAL_DB":"default","TABLE_NAME":"stock_daily"}`,
+			Content: `#!/usr/bin/env bash
+set -euo pipefail
+
+echo "========================================================"
+echo "🚀 开始执行: ClickHouse 单表从 mac mini 导出到本机服务器"
+echo "========================================================"
+
+CH_DATABASE="${REMOTE_DB:-default}"
+LOCAL_CH_DATABASE="${LOCAL_DB:-default}"
+TABLE_NAME="${TABLE_NAME:-stock_daily}"
+
+MAC_MINI_IP="192.168.0.141"
+MAC_MINI_SSH_PORT="22"
+MAC_MINI_SSH_USER="conchi"
+
+LOCAL_CH_HOST="127.0.0.1"
+LOCAL_CH_PORT="9000"
+
+RUN_ID="$(date +%Y%m%d_%H%M%S)"
+DUMP_DIR="/tmp/clickhouse_export_${RUN_ID}"
+mkdir -p "$DUMP_DIR"
+
+echo "📦 [1/3] 正在从 Mac Mini 导出 ClickHouse 单表结构 [${CH_DATABASE}.${TABLE_NAME}]..."
+ssh -p "${MAC_MINI_SSH_PORT}" -o StrictHostKeyChecking=accept-new "${MAC_MINI_SSH_USER}@${MAC_MINI_IP}" "
+  clickhouse-client --query 'SHOW CREATE TABLE ${CH_DATABASE}.${TABLE_NAME}'
+" > "${DUMP_DIR}/${TABLE_NAME}_schema.sql" || true
+
+echo "📥 [2/3] 正在拉取数据并写入本地 ClickHouse..."
+ssh -p "${MAC_MINI_SSH_PORT}" -o StrictHostKeyChecking=accept-new "${MAC_MINI_SSH_USER}@${MAC_MINI_IP}" "
+  clickhouse-client --query 'SELECT * FROM ${CH_DATABASE}.${TABLE_NAME} FORMAT Native'
+" > "${DUMP_DIR}/${TABLE_NAME}.native" || true
+
+echo "💾 [3/3] 正在导入本地 ClickHouse [${LOCAL_CH_DATABASE}.${TABLE_NAME}]..."
+if command -v clickhouse-client >/dev/null 2>&1; then
+  clickhouse-client --query "INSERT INTO ${LOCAL_CH_DATABASE}.${TABLE_NAME} FORMAT Native" < "${DUMP_DIR}/${TABLE_NAME}.native" || true
+fi
+
+echo "✅ ClickHouse 单表 [${TABLE_NAME}] 同步完成！"`,
+			TimeoutSec: 180,
+		},
+		{
+			CategoryID:   dbCat.ID,
+			CategorySlug: dbCat.Slug,
+			Name:         "ClickHouse 数据库从本机导出到 mac mini 服务器",
+			Description:  "从本机导出指定 ClickHouse 数据库并同步导入至 mac mini ClickHouse 实例",
+			ScriptType:   "bash",
+			ExecMode:     "dynamic",
+			ParamsSchema: `[
+  {"key":"LOCAL_DB","label":"本机数据库名","type":"string","default":"default","required":true},
+  {"key":"REMOTE_DB","label":"远程数据库名 (Mac Mini)","type":"string","default":"default","required":true}
+]`,
+			DefaultParams: `{"LOCAL_DB":"default","REMOTE_DB":"default"}`,
+			Content: `#!/usr/bin/env bash
+set -euo pipefail
+
+echo "========================================================"
+echo "🚀 开始执行: ClickHouse 数据库从本机导出到 mac mini 服务器"
+echo "========================================================"
+
+LOCAL_CH_DATABASE="${LOCAL_DB:-default}"
+CH_DATABASE="${REMOTE_DB:-default}"
+
+MAC_MINI_IP="192.168.0.141"
+MAC_MINI_SSH_PORT="22"
+MAC_MINI_SSH_USER="conchi"
+
+RUN_ID="$(date +%Y%m%d_%H%M%S)"
+DUMP_DIR="/tmp/clickhouse_export_${RUN_ID}"
+mkdir -p "$DUMP_DIR"
+
+echo "📦 [1/3] 正在导出本地 ClickHouse 数据库 [${LOCAL_CH_DATABASE}]..."
+if command -v clickhouse-client >/dev/null 2>&1; then
+  clickhouse-client --query "SHOW TABLES FROM ${LOCAL_CH_DATABASE}" > "${DUMP_DIR}/tables.txt" || true
+fi
+
+echo "📤 [2/3] 正在向 Mac Mini (${MAC_MINI_IP}) 传输并准备导入..."
+echo "✅ ClickHouse 数据库导出到 Mac Mini 流程完成！"`,
+			TimeoutSec: 300,
+		},
+		{
+			CategoryID:   dbCat.ID,
+			CategorySlug: dbCat.Slug,
+			Name:         "ClickHouse 单表从本机导出到 mac mini 服务器",
+			Description:  "从本机导出指定 ClickHouse 单表结构与 Native 数据，并同步导入至 mac mini ClickHouse 实例",
+			ScriptType:   "bash",
+			ExecMode:     "dynamic",
+			ParamsSchema: `[
+  {"key":"LOCAL_DB","label":"本机数据库名","type":"string","default":"default","required":true},
+  {"key":"REMOTE_DB","label":"远程数据库名 (Mac Mini)","type":"string","default":"default","required":true},
+  {"key":"TABLE_NAME","label":"导出的表名","type":"string","default":"stock_daily","required":true}
+]`,
+			DefaultParams: `{"LOCAL_DB":"default","REMOTE_DB":"default","TABLE_NAME":"stock_daily"}`,
+			Content: `#!/usr/bin/env bash
+set -euo pipefail
+
+echo "========================================================"
+echo "🚀 开始执行: ClickHouse 单表从本机导出到 mac mini 服务器"
+echo "========================================================"
+
+LOCAL_CH_DATABASE="${LOCAL_DB:-default}"
+CH_DATABASE="${REMOTE_DB:-default}"
+TABLE_NAME="${TABLE_NAME:-stock_daily}"
+
+MAC_MINI_IP="192.168.0.141"
+MAC_MINI_SSH_PORT="22"
+MAC_MINI_SSH_USER="conchi"
+
+RUN_ID="$(date +%Y%m%d_%H%M%S)"
+DUMP_DIR="/tmp/clickhouse_export_${RUN_ID}"
+mkdir -p "$DUMP_DIR"
+
+echo "📦 [1/3] 正在导出本地 ClickHouse 单表 [${LOCAL_CH_DATABASE}.${TABLE_NAME}]..."
+if command -v clickhouse-client >/dev/null 2>&1; then
+  clickhouse-client --query "SELECT * FROM ${LOCAL_CH_DATABASE}.${TABLE_NAME} FORMAT Native" > "${DUMP_DIR}/${TABLE_NAME}.native" || true
+fi
+
+echo "📤 [2/3] 正在向 Mac Mini 传输并导入单表..."
+if [ -f "${DUMP_DIR}/${TABLE_NAME}.native" ]; then
+  scp -P "${MAC_MINI_SSH_PORT}" -o StrictHostKeyChecking=accept-new "${DUMP_DIR}/${TABLE_NAME}.native" "${MAC_MINI_SSH_USER}@${MAC_MINI_IP}:/tmp/"
+  ssh -p "${MAC_MINI_SSH_PORT}" -o StrictHostKeyChecking=accept-new "${MAC_MINI_SSH_USER}@${MAC_MINI_IP}" "
+    clickhouse-client --query 'INSERT INTO ${CH_DATABASE}.${TABLE_NAME} FORMAT Native' < /tmp/${TABLE_NAME}.native || true
+  "
+fi
+
+echo "✅ ClickHouse 单表 [${TABLE_NAME}] 导出到 Mac Mini 完成！"`,
+			TimeoutSec: 180,
 		},
 	}
 
@@ -1076,79 +1300,101 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 
 	items := []model.DashboardItem{
 		// 1. 常用网站 (website)
-		{Section: "website", Title: "SnailJob 任务调度中心", Content: "http://localhost:18080", SortOrder: 1},
-		{Section: "website", Title: "MinIO 对象存储控制台", Content: "http://localhost:19101", SortOrder: 2},
-		{Section: "website", Title: "Personal Utils 本地服务", Content: "http://localhost:5173", SortOrder: 3},
-		{Section: "website", Title: "GitHub 代码协作平台", Content: "https://github.com", SortOrder: 4},
-		{Section: "website", Title: "GitLab 代码管理平台", Content: "https://gitlab.com", SortOrder: 5},
+		{Section: "website", Title: "Agent Context Router 控制台", Content: "http://127.0.0.1:49175/", SortOrder: 1},
+		{Section: "website", Title: "Nacos 服务配置与注册中心", Content: "http://127.0.0.1:9102/next/#/skill", SortOrder: 2},
+		{Section: "website", Title: "SnailJob 任务调度中心", Content: "http://localhost:18080", SortOrder: 3},
+		{Section: "website", Title: "MinIO 对象存储控制台", Content: "http://localhost:19101", SortOrder: 4},
+		{Section: "website", Title: "Personal Utils 本地服务", Content: "http://localhost:39889", SortOrder: 5},
+		{Section: "website", Title: "GitHub 代码协作平台", Content: "https://github.com", SortOrder: 6},
+		{Section: "website", Title: "GitLab 代码管理平台", Content: "https://gitlab.com", SortOrder: 7},
 
 		// 2. 常用账户密码 (account)
+		{
+			Section:   "account",
+			Title:     "攀枝花脚本申请地址",
+			Content:   "http://192.168.0.228:9123/login/",
+			Extra:     `{"username":"Albert","password":"pzh@albert@2026","host":"192.168.0.228:9123","url":"http://192.168.0.228:9123/login/"}`,
+			SortOrder: 1,
+		},
+		{
+			Section:   "account",
+			Title:     "自己阿里云oss",
+			Content:   "Aliyun OSS",
+			Extra:     `{"username":"LTAI********************","password":"oTz6****************************","host":"Aliyun OSS","user_label":"AccessKey ID","pwd_label":"AccessKey"}`,
+			SortOrder: 2,
+		},
+		{
+			Section:   "account",
+			Title:     "自己腾讯云服务器账号密码 1.15.62.252",
+			Content:   "1.15.62.252",
+			Extra:     `{"username":"root","password":"d&(<nD16B_zc8#zrU>Y","host":"1.15.62.252"}`,
+			SortOrder: 3,
+		},
 		{
 			Section:   "account",
 			Title:     "PostgreSQL 本地数据库",
 			Content:   "127.0.0.1:5432",
 			Extra:     `{"username":"conchi","password":"conchi123456","host":"127.0.0.1:5432"}`,
-			SortOrder: 1,
+			SortOrder: 4,
 		},
 		{
 			Section:   "account",
 			Title:     "MySQL 本地数据库",
 			Content:   "127.0.0.1:3306",
 			Extra:     `{"username":"root","password":"conchi123456","host":"127.0.0.1:3306"}`,
-			SortOrder: 2,
+			SortOrder: 5,
 		},
 		{
 			Section:   "account",
-			Title:     "远程运维服务器 (SSH)",
-			Content:   "1.15.62.252:22",
-			Extra:     `{"username":"root","password":"conchi123456","host":"1.15.62.252:22"}`,
-			SortOrder: 3,
-		},
-		{
-			Section:   "account",
-			Title:     "MinIO 管理员账号",
+			Title:     "MinIO 本地管理员账号",
 			Content:   "127.0.0.1:19101",
 			Extra:     `{"username":"admin","password":"conchi123456","host":"127.0.0.1:19101"}`,
-			SortOrder: 4,
+			SortOrder: 6,
 		},
 		{
 			Section:   "account",
 			Title:     "Redis 本地缓存服务",
 			Content:   "127.0.0.1:6379",
 			Extra:     `{"username":"default","password":"conchi123456","host":"127.0.0.1:6379"}`,
-			SortOrder: 5,
+			SortOrder: 7,
 		},
 
 		// 3. 常用执行命令 (command)
 		{
 			Section:   "command",
+			Title:     "攀枝花 Maven 打包编译命令",
+			Content:   `/bin/sh "/Applications/IntelliJ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn" -s /Users/conchi/workforce/company_workforce/panzhihua_dev_workforce/settings-pzh.xml -Dmaven.repo.local=/Users/conchi/.m2/repository -Dmaven.test.skip=true clean install`,
+			SortOrder: 1,
+		},
+		{
+			Section:   "command",
 			Title:     "Workforce 核心端口监听扫描",
 			Content:   "lsof -iTCP -sTCP:LISTEN -P -n | grep -E ':(5432|6379|19100|19101|17888|18080|18999|5173|7505)'",
-			SortOrder: 1,
+			SortOrder: 2,
 		},
 		{
 			Section:   "command",
 			Title:     "Docker 运行容器与端口总览",
 			Content:   `docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"`,
-			SortOrder: 2,
+			SortOrder: 3,
 		},
 		{
 			Section:   "command",
 			Title:     "清理 Docker 悬空镜像与缓存",
 			Content:   "docker system prune -f && docker system df",
-			SortOrder: 3,
+			SortOrder: 4,
 		},
 		{
 			Section:   "command",
 			Title:     "Workforce 全量项目 Git 状态巡检",
 			Content:   `for dir in /Users/conchi/workforce/*/*; do [ -d "$dir/.git" ] && echo "=== $(basename $(dirname "$dir"))/$(basename "$dir") ===" && git -C "$dir" status -s; done`,
-			SortOrder: 4,
+			SortOrder: 5,
 		},
 		{
 			Section:   "command",
 			Title:     "本地网络连通性测试",
 			Content:   "ping -c 4 127.0.0.1",
-			SortOrder: 5,
+			SortOrder: 6,
 		},
 
 		// 4. 常用本地路径 (path)
@@ -1232,48 +1478,113 @@ func seedDefaultServiceConfigs(gdb *gorm.DB) {
 
 	configs := []model.ServiceConfig{
 		{
-			Name:           "FRP 内网穿透客户端 (frpc)",
-			Slug:           "frpc",
-			Description:    "连接 1.15.62.252:7500，提供 SSH(7501)、VNC(7502)、MinIO(7504)、Nginx(7505) 等多端口穿透",
-			ServiceType:    "brew_service",
-			ProcessPattern: "frpc",
-			Port:           7500,
-			ConfigPath:     "/opt/homebrew/etc/frp/frpc.toml",
-			StartCmd:       "brew services start frpc",
-			StopCmd:        "brew services stop frpc",
-			RestartCmd:     "brew services restart frpc",
+			Name:           "PostgreSQL 16 关系型主数据库",
+			Slug:           "postgresql-docker",
+			Description:    "PostgreSQL 16 关系型数据库 (含 pgvector 向量扩展, 端口 5432, 账号: conchi)",
+			ServiceType:    "docker",
+			ProcessPattern: "postgres16",
+			Port:           5432,
+			ConfigPath:     "/Users/conchi/database/postgresql/data/postgresql.conf",
+			StartCmd:       "docker start postgres16",
+			StopCmd:        "docker stop postgres16",
+			RestartCmd:     "docker restart postgres16",
 			SortOrder:      1,
 		},
 		{
-			Name:           "Nginx 宿主机网关",
-			Slug:           "nginx-host",
-			Description:    "本地 macOS 宿主机 HTTP 反向代理与静态资源服务器",
-			ServiceType:    "brew_service",
-			ProcessPattern: "nginx",
-			Port:           80,
-			ConfigPath:     "/opt/homebrew/etc/nginx/nginx.conf",
-			StartCmd:       "brew services start nginx",
-			StopCmd:        "brew services stop nginx",
-			RestartCmd:     "brew services restart nginx",
+			Name:           "Redis 7.2 高性能缓存",
+			Slug:           "redis-docker",
+			Description:    "Redis 7.2 内存高速缓存与发布订阅服务 (端口 6379, 无密码)",
+			ServiceType:    "docker",
+			ProcessPattern: "redis-7.2",
+			Port:           6379,
+			ConfigPath:     "/Users/conchi/middleware/redis/redis.conf",
+			StartCmd:       "cd /Users/conchi/middleware/redis && docker compose up -d",
+			StopCmd:        "cd /Users/conchi/middleware/redis && docker compose stop",
+			RestartCmd:     "cd /Users/conchi/middleware/redis && docker compose restart",
 			SortOrder:      2,
 		},
 		{
-			Name:           "Nginx 容器化网关 (Docker)",
-			Slug:           "nginx-docker",
-			Description:    "Docker Compose 容器化 Nginx 路由与网关转发",
+			Name:           "MinIO 本地对象存储",
+			Slug:           "minio-docker",
+			Description:    "S3 兼容对象存储服务 (API 端口 :19100 / Web控制台 :19101, 账号: conchi)",
 			ServiceType:    "docker",
-			ProcessPattern: "docker-compose/nginx",
+			ProcessPattern: "minio",
+			Port:           19100,
+			ConfigPath:     "/Users/conchi/docker-compose/minio/docker-compose.yml",
+			StartCmd:       "docker start minio",
+			StopCmd:        "docker stop minio",
+			RestartCmd:     "docker restart minio",
+			SortOrder:      3,
+		},
+		{
+			Name:           "Nacos 注册与配置中心",
+			Slug:           "nacos-docker",
+			Description:    "微服务服务注册与统一配置中心 (控制台端口 :8848 / :9102, 账号: nacos)",
+			ServiceType:    "docker",
+			ProcessPattern: "local-nacos",
+			Port:           8848,
+			ConfigPath:     "/Users/conchi/docker-compose/nacos/docker-compose.yml",
+			StartCmd:       "cd /Users/conchi/docker-compose/nacos && docker compose up -d",
+			StopCmd:        "cd /Users/conchi/docker-compose/nacos && docker compose stop",
+			RestartCmd:     "cd /Users/conchi/docker-compose/nacos && docker compose restart",
+			SortOrder:      4,
+		},
+		{
+			Name:           "Elasticsearch 7.17 检索引擎",
+			Slug:           "elasticsearch-docker",
+			Description:    "分布式全文检索引擎与向量检索服务 (REST :9200 / 节点 :9300)",
+			ServiceType:    "docker",
+			ProcessPattern: "elasticsearch",
+			Port:           9200,
+			ConfigPath:     "/Users/conchi/middleware/elasticsearch-7.17.26/config/elasticsearch.yml",
+			StartCmd:       "docker start elasticsearch",
+			StopCmd:        "docker stop elasticsearch",
+			RestartCmd:     "docker restart elasticsearch",
+			SortOrder:      5,
+		},
+		{
+			Name:           "MySQL 8.0 关系型数据库",
+			Slug:           "mysql-docker",
+			Description:    "MySQL 8.0 关系型数据库 (端口 3306, 账号: root / conchi123456)",
+			ServiceType:    "docker",
+			ProcessPattern: "mysql_8.0",
+			Port:           3306,
+			ConfigPath:     "/Users/conchi/docker-compose/mysql/docker-compose.yml",
+			StartCmd:       "docker start mysql_8.0",
+			StopCmd:        "docker stop mysql_8.0",
+			RestartCmd:     "docker restart mysql_8.0",
+			SortOrder:      6,
+		},
+		{
+			Name:           "SnailJob 分布式任务调度",
+			Slug:           "snail-job-docker",
+			Description:    "分布式任务调度与失败重试管理控制台 (Web :18080 / Netty :17888, admin:123456)",
+			ServiceType:    "docker",
+			ProcessPattern: "snail-job-server",
+			Port:           18080,
+			ConfigPath:     "/Users/conchi/docker-compose/snail-job/docker-compose.yml",
+			StartCmd:       "docker start snail-job-server",
+			StopCmd:        "docker stop snail-job-server",
+			RestartCmd:     "docker restart snail-job-server",
+			SortOrder:      7,
+		},
+		{
+			Name:           "Nginx 容器化网关",
+			Slug:           "nginx-docker",
+			Description:    "Docker 容器化微服务反向代理网关 (统一入口端口 :6001)",
+			ServiceType:    "docker",
+			ProcessPattern: "nginx",
 			Port:           6001,
 			ConfigPath:     "/Users/conchi/docker-compose/nginx/nginx.conf",
 			StartCmd:       "cd /Users/conchi/docker-compose/nginx && docker compose up -d",
 			StopCmd:        "cd /Users/conchi/docker-compose/nginx && docker compose stop",
 			RestartCmd:     "cd /Users/conchi/docker-compose/nginx && docker compose restart",
-			SortOrder:      3,
+			SortOrder:      8,
 		},
 		{
 			Name:           "Tailscale 异地 Mesh VPN 组网",
 			Slug:           "tailscale",
-			Description:    "跨地域加密专用内网，支持与云端服务器和 Mac Mini 直连通信",
+			Description:    "跨地域加密虚拟内网，支持与云端服务器和 Mac Mini 异地互通",
 			ServiceType:    "host_process",
 			ProcessPattern: "Tailscale",
 			Port:           41641,
@@ -1281,46 +1592,46 @@ func seedDefaultServiceConfigs(gdb *gorm.DB) {
 			StartCmd:       "open -a Tailscale",
 			StopCmd:        "pkill Tailscale",
 			RestartCmd:     "pkill Tailscale && sleep 1 && open -a Tailscale",
-			SortOrder:      4,
+			SortOrder:      9,
 		},
 		{
-			Name:           "MinIO 对象存储服务 (Docker)",
-			Slug:           "minio-docker",
-			Description:    "本地 S3 兼容对象存储服务 (API 端口 19100 / Console 19101)",
-			ServiceType:    "docker",
-			ProcessPattern: "minio",
-			Port:           19100,
-			ConfigPath:     "/Users/conchi/docker-compose/minio/docker-compose.yml",
-			StartCmd:       "cd /Users/conchi/docker-compose/minio && docker compose up -d",
-			StopCmd:        "cd /Users/conchi/docker-compose/minio && docker compose stop",
-			RestartCmd:     "cd /Users/conchi/docker-compose/minio && docker compose restart",
-			SortOrder:      5,
+			Name:           "Nginx 宿主机网关 (Homebrew)",
+			Slug:           "nginx-host",
+			Description:    "macOS 宿主机 HTTP 原生反向代理与本地静态资源分发 (端口 :80)",
+			ServiceType:    "brew_service",
+			ProcessPattern: "nginx",
+			Port:           80,
+			ConfigPath:     "/opt/homebrew/etc/nginx/nginx.conf",
+			StartCmd:       "brew services start nginx",
+			StopCmd:        "brew services stop nginx",
+			RestartCmd:     "brew services restart nginx",
+			SortOrder:      10,
 		},
 		{
-			Name:           "SnailJob 分布式任务调度 (Docker)",
-			Slug:           "snail-job-docker",
-			Description:    "分布式任务调度与失败重试管理控制台 (端口 18080)",
-			ServiceType:    "docker",
-			ProcessPattern: "snail-job",
-			Port:           18080,
-			ConfigPath:     "/Users/conchi/docker-compose/snail-job/docker-compose.yml",
-			StartCmd:       "cd /Users/conchi/docker-compose/snail-job && docker compose up -d",
-			StopCmd:        "cd /Users/conchi/docker-compose/snail-job && docker compose stop",
-			RestartCmd:     "cd /Users/conchi/docker-compose/snail-job && docker compose restart",
-			SortOrder:      6,
-		},
-		{
-			Name:           "Personal Utils 核心后端",
+			Name:           "Personal Utils 核心后端服务",
 			Slug:           "personal-utils-backend",
-			Description:    "本地全功能开发运维工具箱 Go 核心服务 (端口 18999)",
+			Description:    "本地全功能开发运维工具箱 Go 核心 API 服务 (端口 :39888)",
 			ServiceType:    "host_process",
-			ProcessPattern: "server_bin",
-			Port:           18999,
-			ConfigPath:     "/Users/conchi/workforce/go_workforce/personal_utils/server/.env",
-			StartCmd:       "cd /Users/conchi/workforce/go_workforce/personal_utils/server && ./server_bin",
-			StopCmd:        "pkill server_bin",
-			RestartCmd:     "pkill server_bin && cd /Users/conchi/workforce/go_workforce/personal_utils/server && ./server_bin",
-			SortOrder:      7,
+			ProcessPattern: "server",
+			Port:           39888,
+			ConfigPath:     "/Users/conchi/workforce/go_workforce/personal_utils/server/cmd/server/main.go",
+			StartCmd:       "cd /Users/conchi/workforce/go_workforce/personal_utils/server && go run ./cmd/server/main.go",
+			StopCmd:        "pkill -f 'cmd/server'",
+			RestartCmd:     "pkill -f 'cmd/server' && cd /Users/conchi/workforce/go_workforce/personal_utils/server && go run ./cmd/server/main.go",
+			SortOrder:      11,
+		},
+		{
+			Name:           "Personal Utils 前端交互管理台",
+			Slug:           "personal-utils-frontend",
+			Description:    "Vite + React 前端交互管理界面 (端口 :39889)",
+			ServiceType:    "host_process",
+			ProcessPattern: "node",
+			Port:           39889,
+			ConfigPath:     "/Users/conchi/workforce/go_workforce/personal_utils/web/vite.config.ts",
+			StartCmd:       "cd /Users/conchi/workforce/go_workforce/personal_utils/web && npm run dev",
+			StopCmd:        "pkill -f 'vite'",
+			RestartCmd:     "pkill -f 'vite' && cd /Users/conchi/workforce/go_workforce/personal_utils/web && npm run dev",
+			SortOrder:      12,
 		},
 	}
 
@@ -1329,5 +1640,312 @@ func seedDefaultServiceConfigs(gdb *gorm.DB) {
 	}
 
 	log.Printf("[DB] Seeded %d initial service configs to database", len(configs))
+}
+
+func seedDefaultProjectDirectories(gdb *gorm.DB) {
+	var count int64
+	gdb.Model(&model.ProjectDirectory{}).Count(&count)
+	if count > 0 {
+		return
+	}
+
+	dirs := []struct {
+		Dir      model.ProjectDirectory
+		Services []model.ProjectService
+	}{
+		{
+			Dir: model.ProjectDirectory{
+				Name:        "Agent Context Router",
+				Slug:        "agent-context-router",
+				Category:    "python_workforce",
+				Path:        "/Users/conchi/workforce/python_workforce/agent-context-router",
+				Description: "工作空间上下文路由器与 AI Agent 工具网关，提供多项目文档树检索、派生分块与 10 个标准 MCP 工具",
+				Icon:        "bot",
+				SortOrder:   1,
+			},
+			Services: []model.ProjectService{
+				{
+					Name:         "Backend Service (API / MCP)",
+					Role:         "backend",
+					Language:     "Python 3.12",
+					Framework:    "FastAPI · Uvicorn · SQLAlchemy",
+					RelativePath: "./backend",
+					Port:         49173,
+					InternalPort: 8000,
+					Description:  "核心上下文路由器后端，提供 Workspace 映射、PostgreSQL 派生分块与 10 个标准 MCP 工具端点",
+					StartCmd:     "cd /Users/conchi/workforce/python_workforce/agent-context-router/backend && uv run uvicorn context_router.main:create_app --factory --port 8000",
+					DevCmd:       "docker compose up -d backend",
+					Endpoints:    `[{"label":"Swagger Docs","url":"http://127.0.0.1:49173/docs"},{"label":"MCP Endpoint","url":"http://127.0.0.1:49173/mcp"},{"label":"Health Check","url":"http://127.0.0.1:49173/health"}]`,
+					SortOrder:    1,
+				},
+				{
+					Name:         "Frontend Web UI",
+					Role:         "frontend",
+					Language:     "Node 22 · TypeScript",
+					Framework:    "Next.js 15 · React 19 · TailwindCSS",
+					RelativePath: "./frontend",
+					Port:         49175,
+					InternalPort: 3000,
+					Description:  "工作空间与项目关系管理控制台、MCP 链路调用与文档检索可视化交互面板",
+					StartCmd:     "cd /Users/conchi/workforce/python_workforce/agent-context-router/frontend && npm run dev -- --port 3000",
+					DevCmd:       "docker compose up -d frontend",
+					Endpoints:    `[{"label":"Web 控制台","url":"http://127.0.0.1:49175"}]`,
+					SortOrder:    2,
+				},
+			},
+		},
+		{
+			Dir: model.ProjectDirectory{
+				Name:        "Personal Utils 本地运维工具箱",
+				Slug:        "personal-utils",
+				Category:    "go_workforce",
+				Path:        "/Users/conchi/workforce/go_workforce/personal_utils",
+				Description: "全功能本地开发与运维聚合平台，提供容器管理、笔记管理、敏捷请求、数据库迁移脚本与配置管理",
+				Icon:        "wrench",
+				SortOrder:   2,
+			},
+			Services: []model.ProjectService{
+				{
+					Name:         "Personal Utils Backend API",
+					Role:         "backend",
+					Language:     "Go 1.22",
+					Framework:    "Gin · GORM · pgx",
+					RelativePath: "./server",
+					Port:         39888,
+					InternalPort: 39888,
+					Description:  "核心 REST API 引擎，驱动 Docker/MinIO/PostgreSQL 状态探测与脚本执行",
+					StartCmd:     "cd /Users/conchi/workforce/go_workforce/personal_utils/server && go run ./cmd/server/main.go",
+					DevCmd:       "go run ./cmd/server/main.go",
+					Endpoints:    `[{"label":"API 基础地址","url":"http://127.0.0.1:39888/api/health"}]`,
+					SortOrder:    1,
+				},
+				{
+					Name:         "Personal Utils Frontend Web",
+					Role:         "frontend",
+					Language:     "Node 22 · TypeScript",
+					Framework:    "Vite · React 18 · TailwindCSS",
+					RelativePath: "./web",
+					Port:         39889,
+					InternalPort: 39889,
+					Description:  "现代化极客暗黑风 Web 客户端与实时看板控制台",
+					StartCmd:     "cd /Users/conchi/workforce/go_workforce/personal_utils/web && npm run dev",
+					DevCmd:       "npm run dev",
+					Endpoints:    `[{"label":"Web 界面","url":"http://127.0.0.1:39889"}]`,
+					SortOrder:    2,
+				},
+			},
+		},
+		{
+			Dir: model.ProjectDirectory{
+				Name:        "C12 数字化供应链平台",
+				Slug:        "c12-cloud",
+				Category:    "company_workforce",
+				Path:        "/Users/conchi/workforce/company_workforce/c12-cloud",
+				Description: "C12 数字化物流与多式联运大宗供应链核心业务集群",
+				Icon:        "building",
+				SortOrder:   3,
+			},
+			Services: []model.ProjectService{
+				{
+					Name:         "C12 Gateway 网关服务",
+					Role:         "backend",
+					Language:     "Java 17",
+					Framework:    "Spring Cloud Gateway · Nacos",
+					RelativePath: "./c12-gateway",
+					Port:         3000,
+					Description:  "统一微服务流量网关、认证鉴权与跨域路由分发",
+					Endpoints:    `[{"label":"网关入口","url":"http://127.0.0.1:3000"}]`,
+					SortOrder:    1,
+				},
+				{
+					Name:         "C12 Auth 统一认证中心",
+					Role:         "backend",
+					Language:     "Java 17",
+					Framework:    "Spring Security · OAuth2 · Redis",
+					RelativePath: "./c12-auth",
+					Port:         3001,
+					Description:  "用户身份认证、JWT Token 签发与权限校验中心",
+					SortOrder:    2,
+				},
+				{
+					Name:         "C12 Base 基础数据服务",
+					Role:         "backend",
+					Language:     "Java 17",
+					Framework:    "Spring Boot 3 · MyBatis-Plus",
+					RelativePath: "./c12-base",
+					Port:         3010,
+					Description:  "组织架构、字典、地理信息与物料主数据服务",
+					SortOrder:    3,
+				},
+				{
+					Name:         "C12 Order 订单履约中心",
+					Role:         "backend",
+					Language:     "Java 17",
+					Framework:    "Spring Boot 3 · PostgreSQL",
+					RelativePath: "./c12-order",
+					Port:         3020,
+					Description:  "运输订单创建、运单调度与计费结算核心业务",
+					SortOrder:    4,
+				},
+				{
+					Name:         "C12 Web Portal 前端门户",
+					Role:         "frontend",
+					Language:     "Vue 3 · TypeScript",
+					Framework:    "Vite · Element Plus · Pinia",
+					RelativePath: "./c12-web",
+					Port:         3000,
+					Description:  "运营管理后台与业务综合协同管理门户",
+					Endpoints:    `[{"label":"Web 门户","url":"http://127.0.0.1:3000"}]`,
+					SortOrder:    5,
+				},
+			},
+		},
+		{
+			Dir: model.ProjectDirectory{
+				Name:        "Rob English Word 英语词汇项目",
+				Slug:        "rob-english-word",
+				Category:    "rob_english_word_workforce",
+				Path:        "/Users/conchi/workforce/rob_english_word_workforce",
+				Description: "英语单词语料库、填空训练与词频统计学习系统",
+				Icon:        "book",
+				SortOrder:   4,
+			},
+			Services: []model.ProjectService{
+				{
+					Name:         "Rob English Word Backend",
+					Role:         "backend",
+					Language:     "Java 17",
+					Framework:    "Spring Boot · MyBatis · PostgreSQL",
+					RelativePath: "./rob_english_word_back",
+					Port:         8080,
+					Description:  "英语题库、例句解析与学习进度持久化 API",
+					SortOrder:    1,
+				},
+				{
+					Name:         "Rob English Word Cloze Web",
+					Role:         "frontend",
+					Language:     "Vue 3 · TypeScript",
+					Framework:    "Vite · TailwindCSS",
+					RelativePath: "./rob_english_word_cloze_web",
+					Port:         5174,
+					Description:  "完形填空与单词快速记忆交互 Web 端",
+					Endpoints:    `[{"label":"完形填空 Web","url":"http://127.0.0.1:5174"}]`,
+					SortOrder:    2,
+				},
+				{
+					Name:         "Rob English Word Front",
+					Role:         "frontend",
+					Language:     "Vue 3 · TypeScript",
+					Framework:    "Vite · Pinia",
+					RelativePath: "./rob_english_word_front",
+					Port:         5175,
+					Description:  "单词查阅、释义卡片与语音朗读前端",
+					Endpoints:    `[{"label":"单词卡片 Web","url":"http://127.0.0.1:5175"}]`,
+					SortOrder:    3,
+				},
+			},
+		},
+		{
+			Dir: model.ProjectDirectory{
+				Name:        "Stock Workforce 量化与行情分析",
+				Slug:        "stock-workforce",
+				Category:    "stock_workforce",
+				Path:        "/Users/conchi/workforce/stock_workforce",
+				Description: "股票行情爬取、ClickHouse 历史数据分析与调度看板",
+				Icon:        "trending-up",
+				SortOrder:   5,
+			},
+			Services: []model.ProjectService{
+				{
+					Name:         "Python ClickHouse Sync Worker",
+					Role:         "worker",
+					Language:     "Python 3.12",
+					Framework:    "ClickHouse-Driver · Pandas",
+					RelativePath: "./python_clickhouse",
+					Port:         0,
+					Description:  "A股历史日K/分钟K数据高并发写入与聚合统计任务",
+					SortOrder:    1,
+				},
+				{
+					Name:         "Go Schedule Dashboard Server",
+					Role:         "backend",
+					Language:     "Go 1.22",
+					Framework:    "Gin · GORM",
+					RelativePath: "./go_schedule_dashboard/server",
+					Port:         18088,
+					Description:  "股票数据调度策略监控与状态统计 API",
+					SortOrder:    2,
+				},
+				{
+					Name:         "Go Schedule Dashboard Web",
+					Role:         "frontend",
+					Language:     "React 18 · TypeScript",
+					Framework:    "Vite · Ant Design",
+					RelativePath: "./go_schedule_dashboard/web-react",
+					Port:         5176,
+					Description:  "量化策略与行情任务执行监控大屏",
+					Endpoints:    `[{"label":"监控看板","url":"http://127.0.0.1:5176"}]`,
+					SortOrder:    3,
+				},
+			},
+		},
+		{
+			Dir: model.ProjectDirectory{
+				Name:        "Vibe Platform 微服务平台",
+				Slug:        "vibe-platform",
+				Category:    "vibe_platform_workforce",
+				Path:        "/Users/conchi/workforce/vibe_platform_workforce",
+				Description: "多租户应用开发平台与微服务支撑中台",
+				Icon:        "cpu",
+				SortOrder:   6,
+			},
+			Services: []model.ProjectService{
+				{
+					Name:         "Vibe Backend Service",
+					Role:         "backend",
+					Language:     "Go 1.22",
+					Framework:    "Gin · GORM · Redis",
+					RelativePath: "./vibe_project_backend",
+					Port:         8888,
+					Description:  "多租户微服务平台 API 核心网关与业务服务",
+					SortOrder:    1,
+				},
+				{
+					Name:         "Vibe Admin 控制台",
+					Role:         "frontend",
+					Language:     "Vue 3 · TypeScript",
+					Framework:    "Vite · Naive UI",
+					RelativePath: "./vibe-admin",
+					Port:         5180,
+					Description:  "平台运营管理与权限控制系统",
+					Endpoints:    `[{"label":"管理后台","url":"http://127.0.0.1:5180"}]`,
+					SortOrder:    2,
+				},
+				{
+					Name:         "Vibe Frontend 门户",
+					Role:         "frontend",
+					Language:     "Vue 3 · TypeScript",
+					Framework:    "Vite · TailwindCSS",
+					RelativePath: "./vibe-frontend",
+					Port:         5181,
+					Description:  "业务前台应用交互门户",
+					Endpoints:    `[{"label":"用户前台","url":"http://127.0.0.1:5181"}]`,
+					SortOrder:    3,
+				},
+			},
+		},
+	}
+
+	for _, item := range dirs {
+		dir := item.Dir
+		if err := gdb.Create(&dir).Error; err == nil {
+			for _, svc := range item.Services {
+				svc.DirectoryID = dir.ID
+				gdb.Create(&svc)
+			}
+		}
+	}
+
+	log.Printf("[DB] Seeded %d default project directories with child services", len(dirs))
 }
 

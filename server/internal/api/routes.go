@@ -84,6 +84,16 @@ func SetupRouter(h *Handler, allowOrigins []string) *gin.Engine {
 		api.GET("/service-configs/:id/config", h.GetServiceConfigFile)
 		api.PUT("/service-configs/:id/config", h.UpdateServiceConfigFile)
 		api.POST("/service-configs/:id/action", h.ExecuteServiceAction)
+
+		// Project Services Overview (服务概览)
+		api.GET("/project-directories", h.GetProjectDirectories)
+		api.POST("/project-directories", h.CreateProjectDirectory)
+		api.PUT("/project-directories/:id", h.UpdateProjectDirectory)
+		api.DELETE("/project-directories/:id", h.DeleteProjectDirectory)
+		api.GET("/project-services", h.GetProjectServices)
+		api.POST("/project-services", h.CreateProjectService)
+		api.PUT("/project-services/:id", h.UpdateProjectService)
+		api.DELETE("/project-services/:id", h.DeleteProjectService)
 	}
 
 	return r

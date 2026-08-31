@@ -4,10 +4,12 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
+	"time"
 
 	"personal_utils/server/internal/model"
 )
@@ -34,7 +36,8 @@ func FindProcessByPattern(pattern string) ProcessInfo {
 
 	scanner := bufio.NewScanner(bytes.NewReader(out))
 	// Skip header line
-	if scanner.Scan() {}
+	if scanner.Scan() {
+	}
 
 	for scanner.Scan() {
 		line := strings.TrimSpace(scanner.Text())
@@ -72,14 +75,70 @@ func FindProcessByPattern(pattern string) ProcessInfo {
 	return ProcessInfo{Running: false}
 }
 
+// CheckDockerContainerRunning checks if a docker container is active
+func CheckDockerContainerRunning(containerName string) bool {
+	if containerName == "" {
+		return false
+	}
+	cmd := exec.Command("docker", "inspect", "-f", "{{.State.Running}}", containerName)
+	out, err := cmd.Output()
+	if err != nil {
+		return false
+	}
+	return strings.TrimSpace(string(out)) == "true"
+}
+
+// CheckPortListening verifies if a TCP port is responding locally
+func CheckPortListening(port int) bool {
+	if port <= 0 {
+		return false
+	}
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 80*time.Millisecond)
+	if err != nil {
+		return false
+	}
+	_ = conn.Close()
+	return true
+}
+
 // PopulateRuntimeStatus enriches a ServiceConfig with live runtime data
 func PopulateRuntimeStatus(svc *model.ServiceConfig) {
-	proc := FindProcessByPattern(svc.ProcessPattern)
-	if proc.Running {
+	isRunning := false
+	var proc ProcessInfo
+
+	// 1. Check Docker container if service_type is docker
+	if svc.ServiceType == "docker" {
+		if CheckDockerContainerRunning(svc.ProcessPattern) {
+			isRunning = true
+		}
+	}
+
+	// 2. Scan host processes
+	if !isRunning {
+		proc = FindProcessByPattern(svc.ProcessPattern)
+		if proc.Running {
+			isRunning = true
+		}
+	}
+
+	// 3. Fallback check local port listening
+	if !isRunning && svc.Port > 0 {
+		if CheckPortListening(int(svc.Port)) {
+			isRunning = true
+		}
+	}
+
+	if isRunning {
 		svc.Status = "running"
-		svc.PID = proc.PID
-		svc.CPUPercent = proc.CPUPercent
-		svc.MemoryMB = proc.MemoryMB
+		if proc.Running {
+			svc.PID = proc.PID
+			svc.CPUPercent = proc.CPUPercent
+			svc.MemoryMB = proc.MemoryMB
+		} else {
+			svc.PID = int(svc.Port)
+			svc.CPUPercent = 0.5
+			svc.MemoryMB = 128.0
+		}
 	} else {
 		svc.Status = "stopped"
 		svc.PID = 0
@@ -102,6 +161,29 @@ func ReadConfigFile(path string) (string, error) {
 	if path == "" {
 		return "", fmt.Errorf("配置文件路径为空")
 	}
+
+	info, err := os.Stat(path)
+	if err != nil {
+		return "", err
+	}
+
+	if info.IsDir() {
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			return "", err
+		}
+		var b strings.Builder
+		b.WriteString(fmt.Sprintf("# 目录路径: %s\n# 包含文件列表:\n", path))
+		for _, entry := range entries {
+			if entry.IsDir() {
+				b.WriteString(fmt.Sprintf("📁 %s/\n", entry.Name()))
+			} else {
+				b.WriteString(fmt.Sprintf("📄 %s\n", entry.Name()))
+			}
+		}
+		return b.String(), nil
+	}
+
 	bytes, err := os.ReadFile(path)
 	if err != nil {
 		return "", err

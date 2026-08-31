@@ -70,7 +70,7 @@ export const HomeHub: React.FC = () => {
   const handleOpenFile = async (filePath: string) => {
     try {
       await api.openSystemPath(filePath);
-      showToast('已在系统默认程序中打开');
+      showToast('已在访达 (Finder) 中打开所在目录');
     } catch (err: any) {
       showToast(`打开失败: ${err.message}`);
     }
@@ -190,6 +190,9 @@ export const HomeHub: React.FC = () => {
             let username = 'root';
             let password = '';
             let host = item.content;
+            let userLabel = '账号:';
+            let pwdLabel = '密码:';
+            let linkUrl: string | null = null;
 
             if (item.extra) {
               try {
@@ -197,7 +200,14 @@ export const HomeHub: React.FC = () => {
                 username = parsed.username || username;
                 password = parsed.password || password;
                 host = parsed.host || host;
+                if (parsed.user_label) userLabel = parsed.user_label + ':';
+                if (parsed.pwd_label) pwdLabel = parsed.pwd_label + ':';
+                if (parsed.url) linkUrl = parsed.url;
               } catch {}
+            }
+
+            if (!linkUrl && item.content.startsWith('http')) {
+              linkUrl = item.content;
             }
 
             return (
@@ -205,42 +215,59 @@ export const HomeHub: React.FC = () => {
                 key={item.id}
                 className="bg-[#121215] border border-[#27272a] hover:border-zinc-700 rounded-xl p-3 space-y-2 transition-all"
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-zinc-100 truncate">{item.title}</span>
-                  <span className="text-[10px] font-mono text-zinc-500">{host}</span>
+                <div className="flex items-center justify-between gap-1.5">
+                  <span className="text-xs font-bold text-zinc-100 truncate" title={item.title}>
+                    {item.title}
+                  </span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-[10px] font-mono text-zinc-500 truncate max-w-[100px]" title={host}>
+                      {host}
+                    </span>
+                    {linkUrl && (
+                      <a
+                        href={linkUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-1 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition-all"
+                        title={`打开链接: ${linkUrl}`}
+                      >
+                        <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
+                    )}
+                  </div>
                 </div>
 
-                <div className="bg-[#18181b] p-2 rounded-lg border border-[#27272a] font-mono text-[11px] space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-zinc-500">账号:</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-zinc-200">{username}</span>
+                <div className="bg-[#18181b] p-2 rounded-lg border border-[#27272a] font-mono text-[11px] space-y-1.5">
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-zinc-500 shrink-0 text-[10px]">{userLabel}</span>
+                    <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
+                      <span className="text-zinc-200 truncate" title={username}>{username}</span>
                       <button
-                        onClick={() => handleCopy(`user-${item.id}`, username, '账号')}
-                        className="text-zinc-500 hover:text-zinc-300 p-0.5"
-                        title="复制账号"
+                        onClick={() => handleCopy(`user-${item.id}`, username, userLabel.replace(':', ''))}
+                        className="text-zinc-500 hover:text-zinc-300 p-0.5 shrink-0"
+                        title={`复制${userLabel.replace(':', '')}`}
                       >
                         {copiedId === `user-${item.id}` ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
                       </button>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-zinc-500">密码:</span>
-                    <div className="flex items-center gap-1">
-                      <span className="text-amber-400">
-                        {isRevealed ? password : '••••••••'}
+                  <div className="flex items-center justify-between gap-1.5">
+                    <span className="text-zinc-500 shrink-0 text-[10px]">{pwdLabel}</span>
+                    <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
+                      <span className="text-amber-400 truncate" title={isRevealed ? password : ''}>
+                        {isRevealed ? password : '••••••••••••'}
                       </span>
                       <button
                         onClick={() => togglePasswordVisibility(item.id)}
-                        className="text-zinc-500 hover:text-zinc-300 p-0.5"
+                        className="text-zinc-500 hover:text-zinc-300 p-0.5 shrink-0"
                         title={isRevealed ? '隐藏密码' : '显示密码'}
                       >
                         {isRevealed ? <EyeOff className="w-2.5 h-2.5" /> : <Eye className="w-2.5 h-2.5" />}
                       </button>
                       <button
-                        onClick={() => handleCopy(`pwd-${item.id}`, password, '密码')}
-                        className="text-zinc-500 hover:text-zinc-300 p-0.5"
-                        title="复制密码"
+                        onClick={() => handleCopy(`pwd-${item.id}`, password, pwdLabel.replace(':', ''))}
+                        className="text-zinc-500 hover:text-zinc-300 p-0.5 shrink-0"
+                        title={`复制${pwdLabel.replace(':', '')}`}
                       >
                         {copiedId === `pwd-${item.id}` ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
                       </button>
@@ -287,19 +314,33 @@ export const HomeHub: React.FC = () => {
           {getVisibleItems(data.path, 'path').map((item) => (
             <div
               key={item.id}
-              className="bg-[#121215] border border-[#27272a] hover:border-zinc-700 rounded-xl p-3 flex flex-col justify-between gap-2 transition-all"
+              className="bg-[#121215] border border-[#27272a] hover:border-zinc-700 rounded-xl p-3 space-y-2 transition-all group"
             >
-              <div className="text-xs font-bold text-zinc-100 truncate">{item.title}</div>
-              <div className="bg-[#18181b] p-2 rounded-lg border border-[#27272a] font-mono text-[11px] text-sky-300 truncate" title={item.content}>
-                {item.content}
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-zinc-100 truncate" title={item.title}>
+                  {item.title}
+                </span>
               </div>
-              <button
-                onClick={() => handleCopy(`path-${item.id}`, item.content, '路径')}
-                className="w-full py-1.5 rounded-lg bg-[#18181b] hover:bg-[#27272a] text-zinc-300 hover:text-white border border-[#27272a] text-xs font-medium transition-all flex items-center justify-center gap-1.5"
-              >
-                {copiedId === `path-${item.id}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-sky-400" />}
-                <span>{copiedId === `path-${item.id}` ? '已复制路径' : '复制路径'}</span>
-              </button>
+              <div className="bg-[#18181b] p-2 rounded-lg border border-[#27272a] flex items-center justify-between gap-2">
+                <span
+                  className="font-mono text-[11px] text-sky-300 truncate select-all flex-1 cursor-pointer hover:text-sky-200 transition-colors"
+                  title={`${item.content} (点击复制)`}
+                  onClick={() => handleCopy(`path-${item.id}`, item.content, '路径')}
+                >
+                  {item.content}
+                </span>
+                <button
+                  onClick={() => handleCopy(`path-${item.id}`, item.content, '路径')}
+                  className="p-1 rounded hover:bg-[#27272a] text-zinc-400 hover:text-white transition-all shrink-0"
+                  title="复制路径"
+                >
+                  {copiedId === `path-${item.id}` ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-400" />
+                  ) : (
+                    <Copy className="w-3.5 h-3.5 text-sky-400" />
+                  )}
+                </button>
+              </div>
             </div>
           ))}
         </div>
@@ -307,7 +348,7 @@ export const HomeHub: React.FC = () => {
 
       {/* 5. 常用文档路径 */}
       <section className="space-y-2.5">
-        {renderSectionHeader(<FileText className="w-3.5 h-3.5 text-purple-400" />, '5. 常用文档路径 (点击即可打开)', 'document')}
+        {renderSectionHeader(<FileText className="w-3.5 h-3.5 text-purple-400" />, '5. 常用文档路径 (点击打开所在目录)', 'document')}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {getVisibleItems(data.document, 'document').map((item) => (
             <div
@@ -330,10 +371,11 @@ export const HomeHub: React.FC = () => {
                 </button>
                 <button
                   onClick={() => handleOpenFile(item.content)}
-                  className="flex-1 py-1.5 rounded-lg bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 border border-purple-500/30 text-xs font-medium transition-all flex items-center justify-center gap-1.5"
+                  className="flex-1 py-1.5 rounded-lg bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 border border-purple-500/30 text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  title="在 macOS Finder 中打开文件所在目录"
                 >
                   <FolderOpen className="w-3.5 h-3.5" />
-                  <span>打开文档</span>
+                  <span>打开所在目录</span>
                 </button>
               </div>
             </div>
