@@ -90,6 +90,10 @@ export const HomeHub: React.FC = () => {
 
   useEffect(() => {
     loadData();
+    const interval = setInterval(() => {
+      api.getDashboardItems().then(setData).catch(() => {});
+    }, 12000);
+    return () => clearInterval(interval);
   }, []);
 
   const renderSectionHeader = (
@@ -152,12 +156,37 @@ export const HomeHub: React.FC = () => {
           {getVisibleItems(data.website, 'website').map((item) => (
             <div
               key={item.id}
-              className="bg-[#121215] border border-[#27272a] hover:border-zinc-700 rounded-xl p-3 flex items-center justify-between gap-2 transition-all"
+              className={`bg-[#121215] border rounded-xl p-3 flex items-center justify-between gap-2.5 transition-all ${
+                item.is_online
+                  ? 'border-[#27272a] hover:border-emerald-500/50 hover:shadow-[0_0_12px_rgba(16,185,129,0.08)]'
+                  : 'border-[#27272a] hover:border-zinc-700 opacity-80'
+              }`}
             >
-              <div className="min-w-0 flex-1">
-                <div className="text-xs font-bold text-zinc-100 truncate">{item.title}</div>
-                <div className="text-[11px] font-mono text-zinc-500 truncate mt-0.5">{item.content}</div>
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                {/* 状态指示绿点 */}
+                <div className="relative flex items-center justify-center shrink-0" title={item.is_online ? '已启动 (服务在线)' : '未启动'}>
+                  {item.is_online ? (
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span>
+                    </span>
+                  ) : (
+                    <span className="inline-flex rounded-full h-1.5 w-1.5 bg-zinc-600"></span>
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-zinc-100 truncate" title={item.title}>
+                      {item.title}
+                    </span>
+                  </div>
+                  <div className="text-[11px] font-mono text-zinc-500 truncate mt-0.5" title={item.content}>
+                    {item.content}
+                  </div>
+                </div>
               </div>
+
               <div className="flex items-center gap-1 shrink-0">
                 <button
                   onClick={() => handleCopy(`web-${item.id}`, item.content, '链接')}
@@ -170,8 +199,12 @@ export const HomeHub: React.FC = () => {
                   href={item.content}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="p-1.5 rounded-lg bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border border-blue-500/30 transition-all"
-                  title="打开网站"
+                  className={`p-1.5 rounded-lg border transition-all ${
+                    item.is_online
+                      ? 'bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.15)]'
+                      : 'bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border-blue-500/30'
+                  }`}
+                  title={item.is_online ? '服务已启动 - 点击打开' : '打开网站'}
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                 </a>

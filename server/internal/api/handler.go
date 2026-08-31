@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -914,6 +915,19 @@ func (h *Handler) GetDashboardItems(c *gin.Context) {
 		return
 	}
 
+	// 并发极速探测常用网站连接是否已启动
+	var wg sync.WaitGroup
+	for i := range items {
+		if items[i].Section == "website" {
+			wg.Add(1)
+			go func(idx int) {
+				defer wg.Done()
+				items[idx].IsOnline = probeURLOnline(items[idx].Content)
+			}(i)
+		}
+	}
+	wg.Wait()
+
 	grouped := map[string][]model.DashboardItem{
 		"website":  {},
 		"account":  {},
@@ -927,6 +941,34 @@ func (h *Handler) GetDashboardItems(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": grouped, "message": "Dashboard items fetched successfully"})
+}
+
+func probeURLOnline(rawURL string) bool {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return false
+	}
+	host := u.Host
+	if host == "" {
+		host = rawURL
+	}
+	if !strings.Contains(host, ":") {
+		if u.Scheme == "https" {
+			host = host + ":443"
+		} else {
+			host = host + ":80"
+		}
+	}
+	if strings.HasPrefix(host, "localhost:") {
+		host = "127.0.0.1:" + strings.TrimPrefix(host, "localhost:")
+	}
+
+	conn, err := net.DialTimeout("tcp", host, 250*time.Millisecond)
+	if err != nil {
+		return false
+	}
+	_ = conn.Close()
+	return true
 }
 
 // ==========================================

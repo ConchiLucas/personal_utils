@@ -11,6 +11,7 @@ type DashboardItem struct {
 	Content   string    `json:"content" gorm:"column:content;type:text;not null"`              // url, cmd, path, or host
 	Extra     string    `json:"extra" gorm:"column:extra;type:text"`                          // json metadata e.g. {"username":"root", "password":"...", "host":"..."}
 	SortOrder int       `json:"sort_order" gorm:"column:sort_order;default:0"`
+	IsOnline  bool      `json:"is_online" gorm:"-"`
 }
 
 func (DashboardItem) TableName() string {

@@ -161,6 +161,7 @@ export interface DashboardItem {
   content: string;
   extra?: string;
   sort_order: number;
+  is_online?: boolean;
   created_at: string;
   updated_at: string;
 }
