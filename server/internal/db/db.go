@@ -1448,8 +1448,8 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		},
 		{
 			Section:   "document",
-			Title:     "SnailJob 任务调度集成指南",
-			Content:   "/Users/conchi/workforce/go_workforce/personal_utils/notes/snailjob-guide.md",
+			Title:     "Personal Utils 工程目录",
+			Content:   "/Users/conchi/workforce/go_workforce/personal_utils",
 			SortOrder: 4,
 		},
 		{
