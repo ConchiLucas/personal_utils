@@ -1442,8 +1442,8 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		},
 		{
 			Section:   "document",
-			Title:     "数据库双向迁移脚本源码",
-			Content:   "/Users/conchi/workforce/go_workforce/personal_utils/server/internal/db/db.go",
+			Title:     "Stock Workforce 工程目录",
+			Content:   "/Users/conchi/workforce/stock_workforce",
 			SortOrder: 3,
 		},
 		{
