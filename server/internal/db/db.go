@@ -1436,8 +1436,8 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		},
 		{
 			Section:   "document",
-			Title:     "Workforce 全量工程目录架构文档",
-			Content:   "/Users/conchi/workforce/go_workforce/personal_utils/notes/workforce-project-inventory.md",
+			Title:     "English Workforce 工程目录",
+			Content:   "/Users/conchi/workforce/english_workforce",
 			SortOrder: 2,
 		},
 		{
