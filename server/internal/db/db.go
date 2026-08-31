@@ -1307,7 +1307,7 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		{Section: "website", Title: "孩子学习工作台 (Kid App)", Content: "http://localhost:19082/", SortOrder: 5},
 		{Section: "website", Title: "英语单词背诵平台 (Rob Word)", Content: "http://localhost:6111/", SortOrder: 6},
 		{Section: "website", Title: "句子完形填空平台 (Cloze Web)", Content: "http://localhost:6014/", SortOrder: 7},
-		{Section: "website", Title: "选词大盘分析 (Word Dashboard)", Content: "http://localhost:6016/", SortOrder: 8},
+		{Section: "website", Title: "english-word 运营后台", Content: "http://127.0.0.1:6016/", SortOrder: 8},
 		{Section: "website", Title: "股票量化交易前端 (Stock Vue)", Content: "http://localhost:6021/", SortOrder: 9},
 		{Section: "website", Title: "股票调度大盘 (Stock Schedule Web)", Content: "http://localhost:6022/", SortOrder: 10},
 		{Section: "website", Title: "统一收件箱监控大盘 (Watch Inbox)", Content: "http://127.0.0.1:18501/", SortOrder: 11},
