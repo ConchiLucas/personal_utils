@@ -1301,12 +1301,10 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 	items := []model.DashboardItem{
 		// 1. 常用网站 (website)
 		{Section: "website", Title: "Agent Context Router 控制台", Content: "http://127.0.0.1:49175/", SortOrder: 1},
-		{Section: "website", Title: "Nacos 服务配置与注册中心", Content: "http://127.0.0.1:9102/next/#/skill", SortOrder: 2},
-		{Section: "website", Title: "SnailJob 任务调度中心", Content: "http://localhost:18080", SortOrder: 3},
-		{Section: "website", Title: "MinIO 对象存储控制台", Content: "http://localhost:19101", SortOrder: 4},
-		{Section: "website", Title: "Personal Utils 本地服务", Content: "http://localhost:39889", SortOrder: 5},
-		{Section: "website", Title: "GitHub 代码协作平台", Content: "https://github.com", SortOrder: 6},
-		{Section: "website", Title: "GitLab 代码管理平台", Content: "https://gitlab.com", SortOrder: 7},
+		{Section: "website", Title: "English Material 英语素材管理平台", Content: "http://127.0.0.1:19638/", SortOrder: 2},
+		{Section: "website", Title: "卢沁一 · 学习工作台", Content: "http://localhost:19081/", SortOrder: 3},
+		{Section: "website", Title: "学习内容后台 (数学模块)", Content: "http://localhost:19091/math", SortOrder: 4},
+		{Section: "website", Title: "股票调度看板与量化分析平台", Content: "http://127.0.0.1:26064/", SortOrder: 5},
 
 		// 2. 常用账户密码 (account)
 		{
