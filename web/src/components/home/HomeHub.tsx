@@ -28,12 +28,12 @@ export const HomeHub: React.FC = () => {
   });
   const [loading, setLoading] = useState(false);
 
-  // Expanded state for each section (website, account & path default true)
+  // Expanded state for each section (all collapsed by default, showing 1 row of 4 items)
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    website: true,
-    account: true,
+    website: false,
+    account: false,
     command: false,
-    path: true,
+    path: false,
     document: false,
   });
 
