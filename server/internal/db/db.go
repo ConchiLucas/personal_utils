@@ -1442,8 +1442,8 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		},
 		{
 			Section:   "document",
-			Title:     "Stock Workforce 工程目录",
-			Content:   "/Users/conchi/workforce/stock_workforce",
+			Title:     "Agent Context Router 工程目录",
+			Content:   "/Users/conchi/workforce/python_workforce/agent-context-router",
 			SortOrder: 3,
 		},
 		{
