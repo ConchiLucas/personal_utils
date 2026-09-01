@@ -1436,8 +1436,8 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		},
 		{
 			Section:   "document",
-			Title:     "English Workforce 工程目录",
-			Content:   "/Users/conchi/workforce/english_workforce",
+			Title:     "攀枝花开发工程目录",
+			Content:   "/Users/conchi/workforce/company_workforce/panzhihua_dev_workforce",
 			SortOrder: 2,
 		},
 		{
