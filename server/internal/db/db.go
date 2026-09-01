@@ -1430,8 +1430,8 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		// 5. 常用文档路径 (document)
 		{
 			Section:   "document",
-			Title:     "Agent Context Router 工程目录",
-			Content:   "/Users/conchi/workforce/python_workforce/agent-context-router",
+			Title:     "下载路径",
+			Content:   "/Users/conchi/Downloads",
 			SortOrder: 1,
 		},
 		{
