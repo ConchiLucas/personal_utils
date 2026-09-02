@@ -1448,8 +1448,8 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		},
 		{
 			Section:   "document",
-			Title:     "Personal Utils 工程目录",
-			Content:   "/Users/conchi/workforce/go_workforce/personal_utils",
+			Title:     "桌面路径",
+			Content:   "/Users/conchi/Desktop",
 			SortOrder: 4,
 		},
 		{
