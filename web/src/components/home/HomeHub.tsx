@@ -14,7 +14,8 @@ import {
   ChevronUp,
   Play,
   Loader2,
-  X
+  X,
+  RotateCcw
 } from 'lucide-react';
 import { api } from '../../api/client';
 import { DashboardItem, DashboardResponse } from '../../types';
@@ -42,6 +43,26 @@ export const HomeHub: React.FC = () => {
   const [revealedPasswords, setRevealedPasswords] = useState<Record<number, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // In-memory edited values for command and document sections (no database persistence required)
+  const [editedValues, setEditedValues] = useState<Record<number, string>>({});
+
+  const getItemValue = (item: DashboardItem) => {
+    return editedValues[item.id] !== undefined ? editedValues[item.id] : item.content;
+  };
+
+  const isItemEdited = (item: DashboardItem) => {
+    return editedValues[item.id] !== undefined && editedValues[item.id] !== item.content;
+  };
+
+  const handleResetItem = (id: number) => {
+    setEditedValues((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    showToast('已恢复为默认初始值');
+  };
 
   // Script execution states
   const [runningScriptId, setRunningScriptId] = useState<number | null>(null);
@@ -356,67 +377,151 @@ export const HomeHub: React.FC = () => {
         </div>
       </section>
 
-      {/* 3. 常用执行命令 */}
+      {/* 3. 常用执行命令 (支持即时修改后复制) */}
       <section className="space-y-2.5">
-        {renderSectionHeader(<Terminal className="w-3.5 h-3.5 text-emerald-400" />, '3. 常用执行命令', 'command')}
+        {renderSectionHeader(<Terminal className="w-3.5 h-3.5 text-emerald-400" />, '3. 常用执行命令 (可修改后直接复制)', 'command')}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {getVisibleItems(data.command, 'command').map((item) => (
-            <div
-              key={item.id}
-              className="bg-[#121215] border border-[#27272a] hover:border-zinc-700 rounded-xl p-3 flex flex-col justify-between gap-2 transition-all"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-zinc-100 truncate">{item.title}</span>
-                <button
-                  onClick={() => handleCopy(`cmd-${item.id}`, item.content, '命令')}
-                  className="px-1.5 py-0.5 rounded-md bg-[#18181b] hover:bg-[#27272a] text-zinc-300 hover:text-white border border-[#27272a] text-[10px] font-medium transition-all flex items-center gap-1 shrink-0 cursor-pointer"
-                >
-                  {copiedId === `cmd-${item.id}` ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5 text-blue-400" />}
-                  <span>{copiedId === `cmd-${item.id}` ? '已复制' : '复制'}</span>
-                </button>
+          {getVisibleItems(data.command, 'command').map((item) => {
+            const currentValue = getItemValue(item);
+            const isEdited = isItemEdited(item);
+
+            return (
+              <div
+                key={item.id}
+                className={`bg-[#121215] border rounded-xl p-3 flex flex-col justify-between gap-2.5 transition-all ${
+                  isEdited
+                    ? 'border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.08)]'
+                    : 'border-[#27272a] hover:border-zinc-700'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-xs font-bold text-zinc-100 truncate" title={item.title}>
+                      {item.title}
+                    </span>
+                    {isEdited && (
+                      <span className="text-[9px] font-medium text-emerald-400 bg-emerald-400/10 px-1 py-0.5 rounded border border-emerald-400/20 shrink-0">
+                        已修改
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {isEdited && (
+                      <button
+                        onClick={() => handleResetItem(item.id)}
+                        className="p-1 rounded hover:bg-[#27272a] text-zinc-400 hover:text-emerald-400 transition-all cursor-pointer"
+                        title="恢复为默认命令"
+                      >
+                        <RotateCcw className="w-2.5 h-2.5" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleCopy(`cmd-${item.id}`, currentValue, '命令')}
+                      className="px-1.5 py-0.5 rounded-md bg-[#18181b] hover:bg-[#27272a] text-zinc-300 hover:text-white border border-[#27272a] text-[10px] font-medium transition-all flex items-center gap-1 shrink-0 cursor-pointer"
+                      title="复制当前输入框中的命令"
+                    >
+                      {copiedId === `cmd-${item.id}` ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5 text-blue-400" />}
+                      <span>{copiedId === `cmd-${item.id}` ? '已复制' : '复制'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={currentValue}
+                    onChange={(e) =>
+                      setEditedValues((prev) => ({
+                        ...prev,
+                        [item.id]: e.target.value,
+                      }))
+                    }
+                    className="w-full bg-[#09090b] px-2.5 py-1.5 rounded-lg border border-[#27272a] focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/30 focus:outline-none font-mono text-[11px] text-emerald-400/95 transition-all select-all placeholder-zinc-600"
+                    placeholder="可直接修改命令内容..."
+                    title="可在此直接修改命令参数（如端口号），点击右上角复制即可执行"
+                  />
+                </div>
               </div>
-              <div className="bg-[#09090b] p-2 rounded-lg border border-[#27272a] font-mono text-[10px] text-emerald-400/90 truncate leading-relaxed select-all" title={item.content}>
-                <code>{item.content}</code>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
-      {/* 4. 常用文档与目录路径 (原第5行前移，支持访达打开所在目录) */}
+      {/* 4. 常用文档与目录路径 (原第5行前移，支持即时修改并打开所在目录) */}
       <section className="space-y-2.5">
-        {renderSectionHeader(<FolderOpen className="w-3.5 h-3.5 text-purple-400" />, '4. 常用文档与目录路径 (点击打开所在目录)', 'document')}
+        {renderSectionHeader(<FolderOpen className="w-3.5 h-3.5 text-purple-400" />, '4. 常用文档与目录路径 (可修改后打开所在目录)', 'document')}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {getVisibleItems(data.document, 'document').map((item) => (
-            <div
-              key={item.id}
-              className="bg-[#121215] border border-[#27272a] hover:border-zinc-700 rounded-xl p-3 flex flex-col justify-between gap-2 transition-all"
-            >
-              <div className="text-xs font-bold text-zinc-100 truncate" title={item.title}>
-                {item.title}
+          {getVisibleItems(data.document, 'document').map((item) => {
+            const currentValue = getItemValue(item);
+            const isEdited = isItemEdited(item);
+
+            return (
+              <div
+                key={item.id}
+                className={`bg-[#121215] border rounded-xl p-3 flex flex-col justify-between gap-2.5 transition-all ${
+                  isEdited
+                    ? 'border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.08)]'
+                    : 'border-[#27272a] hover:border-zinc-700'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="text-xs font-bold text-zinc-100 truncate" title={item.title}>
+                      {item.title}
+                    </span>
+                    {isEdited && (
+                      <span className="text-[9px] font-medium text-purple-400 bg-purple-400/10 px-1 py-0.5 rounded border border-purple-400/20 shrink-0">
+                        已修改
+                      </span>
+                    )}
+                  </div>
+                  {isEdited && (
+                    <button
+                      onClick={() => handleResetItem(item.id)}
+                      className="p-1 rounded hover:bg-[#27272a] text-zinc-400 hover:text-purple-400 transition-all cursor-pointer shrink-0"
+                      title="恢复为默认路径"
+                    >
+                      <RotateCcw className="w-2.5 h-2.5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={currentValue}
+                    onChange={(e) =>
+                      setEditedValues((prev) => ({
+                        ...prev,
+                        [item.id]: e.target.value,
+                      }))
+                    }
+                    className="w-full bg-[#18181b] px-2.5 py-1.5 rounded-lg border border-[#27272a] focus:border-purple-500/60 focus:ring-1 focus:ring-purple-500/30 focus:outline-none font-mono text-[11px] text-purple-300 transition-all select-all placeholder-zinc-600"
+                    placeholder="可直接修改目录路径..."
+                    title="可在此直接修改路径，点击下方按钮可直接在访达中打开该修改后路径"
+                  />
+                </div>
+
+                <div className="flex items-center gap-1.5 pt-0.5">
+                  <button
+                    onClick={() => handleCopy(`doc-${item.id}`, currentValue, '路径')}
+                    className="p-1.5 rounded-lg bg-[#18181b] hover:bg-[#27272a] text-zinc-400 hover:text-white border border-[#27272a] transition-all cursor-pointer shrink-0"
+                    title="复制当前输入框中的路径"
+                  >
+                    {copiedId === `doc-${item.id}` ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                  <button
+                    onClick={() => handleOpenFile(currentValue)}
+                    className="flex-1 py-1.5 rounded-lg bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 border border-purple-500/30 text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    title="在 macOS 访达 (Finder) 中打开当前输入框中的路径"
+                  >
+                    <FolderOpen className="w-3.5 h-3.5" />
+                    <span>打开所在目录</span>
+                  </button>
+                </div>
               </div>
-              <div className="bg-[#18181b] p-2 rounded-lg border border-[#27272a] font-mono text-[10px] text-purple-300 truncate select-all" title={item.content}>
-                {item.content}
-              </div>
-              <div className="flex items-center gap-1.5 pt-1">
-                <button
-                  onClick={() => handleCopy(`doc-${item.id}`, item.content, '路径')}
-                  className="p-1.5 rounded-lg bg-[#18181b] hover:bg-[#27272a] text-zinc-400 hover:text-white border border-[#27272a] transition-all cursor-pointer shrink-0"
-                  title="复制路径"
-                >
-                  {copiedId === `doc-${item.id}` ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                </button>
-                <button
-                  onClick={() => handleOpenFile(item.content)}
-                  className="flex-1 py-1.5 rounded-lg bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 border border-purple-500/30 text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  title="在 macOS 访达 (Finder) 中打开文件所在目录"
-                >
-                  <FolderOpen className="w-3.5 h-3.5" />
-                  <span>打开所在目录</span>
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
