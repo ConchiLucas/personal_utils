@@ -579,21 +579,21 @@ func seedDefaultScripts(gdb *gorm.DB) {
 
 	scripts := []model.ScriptItem{
 		// ==========================================
-		// 🤖 Agent Context Router 启停管理脚本
+		// 🤖 Agent Context Router 启停管理脚本 (Native 原生服务栈)
 		// ==========================================
 		{
 			CategoryID:   opsCat.ID,
 			CategorySlug: opsCat.Slug,
-			Name:         "Agent Context Router 一键启动本地服务栈",
-			Description:  "启动 Agent Context Router 全栈容器 (Backend: 49173, Frontend: 49175) 并拉起本地 Host Runtime Runner 守护进程",
+			Name:         "Agent Context Router 一键启动 Native 服务栈",
+			Description:  "启动 Agent Context Router 原生 Native 服务栈 (Backend: 49173, Frontend: 49175) 并拉起本地 Host Runtime Runner 守护进程",
 			ScriptType:   "bash",
 			ExecMode:     "direct",
 			Content: `#!/bin/zsh
 set -e
-echo "🚀 正在启动 Agent Context Router 全栈服务与 Host Runtime Runner..."
+echo "🚀 正在启动 Agent Context Router 原生服务栈 (Backend, Frontend, Host Runner)..."
 cd /Users/conchi/workforce/python_workforce/agent-context-router
-/bin/zsh ./scripts/start-local-stack.sh
-echo "✅ Agent Context Router 本地服务栈已启动完成！"
+/bin/zsh ./scripts/start-native-stack.sh
+echo "✅ Agent Context Router 原生服务栈已启动就绪！"
 echo "前端控制台: http://127.0.0.1:49175"
 echo "后端API/MCP: http://127.0.0.1:49173"`,
 			WorkingDir:   "/Users/conchi/workforce/python_workforce/agent-context-router",
@@ -602,30 +602,46 @@ echo "后端API/MCP: http://127.0.0.1:49173"`,
 		{
 			CategoryID:   opsCat.ID,
 			CategorySlug: opsCat.Slug,
-			Name:         "Agent Context Router 一键停止服务栈",
-			Description:  "停止 Agent Context Router 全栈容器服务及 Host Runtime Runner 守护进程",
+			Name:         "Agent Context Router 一键停止 Native 服务栈",
+			Description:  "停止 Agent Context Router 原生服务栈全量进程及 Host Runtime Runner 守护进程",
 			ScriptType:   "bash",
 			ExecMode:     "direct",
 			Content: `#!/bin/zsh
 set -e
-echo "🛑 正在停止 Agent Context Router 全栈服务与 Host Runtime Runner..."
+echo "🛑 正在停止 Agent Context Router 原生服务栈..."
 cd /Users/conchi/workforce/python_workforce/agent-context-router
-/bin/zsh ./scripts/stop-local-stack.sh --all
-echo "✅ Agent Context Router 所有容器与后台进程已安全停止！"`,
+/bin/zsh ./scripts/stop-native-stack.sh
+echo "✅ Agent Context Router 所有后台进程已安全停止！"`,
 			WorkingDir:   "/Users/conchi/workforce/python_workforce/agent-context-router",
 			TimeoutSec:   60,
 		},
 		{
 			CategoryID:   opsCat.ID,
 			CategorySlug: opsCat.Slug,
-			Name:         "Agent Context Router 服务健康与状态巡检",
-			Description:  "巡检 Context Router 后端健康检查、前端端口及 Host Runtime Runner 运行状态",
+			Name:         "Agent Context Router 重启 Native 服务栈",
+			Description:  "无缝重启 Context Router 原生 Backend、Frontend 与 Host Runner 守护进程",
 			ScriptType:   "bash",
 			ExecMode:     "direct",
 			Content: `#!/bin/zsh
-echo "🔍 正在巡检 Agent Context Router 状态..."
+set -e
+echo "🔄 正在重启 Agent Context Router 原生服务栈..."
 cd /Users/conchi/workforce/python_workforce/agent-context-router
-/bin/zsh ./scripts/status-local-stack.sh`,
+/bin/zsh ./scripts/restart-native-stack.sh
+echo "✅ Agent Context Router 原生服务栈重启完成！"`,
+			WorkingDir:   "/Users/conchi/workforce/python_workforce/agent-context-router",
+			TimeoutSec:   120,
+		},
+		{
+			CategoryID:   opsCat.ID,
+			CategorySlug: opsCat.Slug,
+			Name:         "Agent Context Router 状态与健康巡检",
+			Description:  "检测 Context Router 原生后端健康检查、前端端口及 Host Runtime Runner 运行状态",
+			ScriptType:   "bash",
+			ExecMode:     "direct",
+			Content: `#!/bin/zsh
+echo "🔍 正在巡检 Agent Context Router 原生服务状态..."
+cd /Users/conchi/workforce/python_workforce/agent-context-router
+/bin/zsh ./scripts/status-native-stack.sh`,
 			WorkingDir:   "/Users/conchi/workforce/python_workforce/agent-context-router",
 			TimeoutSec:   30,
 		},
@@ -1666,27 +1682,27 @@ func seedDefaultServiceConfigs(gdb *gorm.DB) {
 		{
 			Name:           "Agent Context Router 核心服务 (API / MCP)",
 			Slug:           "agent-context-router-backend",
-			Description:    "工作空间上下文路由器与 AI Agent 工具网关，提供 MCP 服务与端点 (端口 :49173)",
-			ServiceType:    "docker",
-			ProcessPattern: "agent-context-router-backend-1",
+			Description:    "工作空间上下文路由器与 AI Agent 工具网关，Native 原生进程运行 (端口 :49173)",
+			ServiceType:    "host_process",
+			ProcessPattern: "context_router.main",
 			Port:           49173,
-			ConfigPath:     "/Users/conchi/workforce/python_workforce/agent-context-router/docker-compose.yml",
-			StartCmd:       "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/start-local-stack.sh",
-			StopCmd:        "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/stop-local-stack.sh --all",
-			RestartCmd:     "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/stop-local-stack.sh --all && sleep 1 && /bin/zsh ./scripts/start-local-stack.sh",
+			ConfigPath:     "/Users/conchi/workforce/python_workforce/agent-context-router/.env.native.local",
+			StartCmd:       "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/start-native-stack.sh",
+			StopCmd:        "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/stop-native-stack.sh",
+			RestartCmd:     "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/restart-native-stack.sh",
 			SortOrder:      11,
 		},
 		{
 			Name:           "Agent Context Router 前端 Web 控制台",
 			Slug:           "agent-context-router-frontend",
-			Description:    "Next.js 15 Web 控制台与可视化交互面板 (端口 :49175)",
-			ServiceType:    "docker",
-			ProcessPattern: "agent-context-router-frontend-1",
+			Description:    "Next.js 15 Web 控制台与可视化交互面板，Native 原生进程运行 (端口 :49175)",
+			ServiceType:    "host_process",
+			ProcessPattern: "next-server",
 			Port:           49175,
 			ConfigPath:     "/Users/conchi/workforce/python_workforce/agent-context-router/frontend/package.json",
-			StartCmd:       "cd /Users/conchi/workforce/python_workforce/agent-context-router && docker compose up -d frontend",
-			StopCmd:        "cd /Users/conchi/workforce/python_workforce/agent-context-router && docker compose stop frontend",
-			RestartCmd:     "cd /Users/conchi/workforce/python_workforce/agent-context-router && docker compose restart frontend",
+			StartCmd:       "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/start-native-stack.sh",
+			StopCmd:        "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/stop-native-stack.sh",
+			RestartCmd:     "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/restart-native-stack.sh",
 			SortOrder:      12,
 		},
 	}
