@@ -537,7 +537,7 @@ func seedDefaultScripts(gdb *gorm.DB) {
 	gdb.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&model.ScriptItem{})
 	gdb.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&model.ScriptCategory{})
 
-	// 1. Seed Single Official Database Migration Category
+	// 1. Seed Categories (Database Migration & Service Ops)
 	categories := []model.ScriptCategory{
 		{
 			Name:        "💾 数据库迁移",
@@ -546,6 +546,14 @@ func seedDefaultScripts(gdb *gorm.DB) {
 			Icon:        "database",
 			Color:       "blue",
 			SortOrder:   1,
+		},
+		{
+			Name:        "🚀 服务运维与启停",
+			Slug:        "service-ops",
+			Description: "前后端工程本地全栈启停、守护进程管理与运行状态巡检",
+			Icon:        "play",
+			Color:       "emerald",
+			SortOrder:   2,
 		},
 	}
 
@@ -563,11 +571,64 @@ func seedDefaultScripts(gdb *gorm.DB) {
 		}
 	}
 
-	// 2. Fetch seeded category ID
+	// 2. Fetch seeded category IDs
 	var dbCat model.ScriptCategory
 	gdb.Where("slug = ?", "db-migration").First(&dbCat)
+	var opsCat model.ScriptCategory
+	gdb.Where("slug = ?", "service-ops").First(&opsCat)
 
 	scripts := []model.ScriptItem{
+		// ==========================================
+		// 🤖 Agent Context Router 启停管理脚本
+		// ==========================================
+		{
+			CategoryID:   opsCat.ID,
+			CategorySlug: opsCat.Slug,
+			Name:         "Agent Context Router 一键启动本地服务栈",
+			Description:  "启动 Agent Context Router 全栈容器 (Backend: 49173, Frontend: 49175) 并拉起本地 Host Runtime Runner 守护进程",
+			ScriptType:   "bash",
+			ExecMode:     "direct",
+			Content: `#!/bin/zsh
+set -e
+echo "🚀 正在启动 Agent Context Router 全栈服务与 Host Runtime Runner..."
+cd /Users/conchi/workforce/python_workforce/agent-context-router
+/bin/zsh ./scripts/start-local-stack.sh
+echo "✅ Agent Context Router 本地服务栈已启动完成！"
+echo "前端控制台: http://127.0.0.1:49175"
+echo "后端API/MCP: http://127.0.0.1:49173"`,
+			WorkingDir:   "/Users/conchi/workforce/python_workforce/agent-context-router",
+			TimeoutSec:   120,
+		},
+		{
+			CategoryID:   opsCat.ID,
+			CategorySlug: opsCat.Slug,
+			Name:         "Agent Context Router 一键停止服务栈",
+			Description:  "停止 Agent Context Router 全栈容器服务及 Host Runtime Runner 守护进程",
+			ScriptType:   "bash",
+			ExecMode:     "direct",
+			Content: `#!/bin/zsh
+set -e
+echo "🛑 正在停止 Agent Context Router 全栈服务与 Host Runtime Runner..."
+cd /Users/conchi/workforce/python_workforce/agent-context-router
+/bin/zsh ./scripts/stop-local-stack.sh --all
+echo "✅ Agent Context Router 所有容器与后台进程已安全停止！"`,
+			WorkingDir:   "/Users/conchi/workforce/python_workforce/agent-context-router",
+			TimeoutSec:   60,
+		},
+		{
+			CategoryID:   opsCat.ID,
+			CategorySlug: opsCat.Slug,
+			Name:         "Agent Context Router 服务健康与状态巡检",
+			Description:  "巡检 Context Router 后端健康检查、前端端口及 Host Runtime Runner 运行状态",
+			ScriptType:   "bash",
+			ExecMode:     "direct",
+			Content: `#!/bin/zsh
+echo "🔍 正在巡检 Agent Context Router 状态..."
+cd /Users/conchi/workforce/python_workforce/agent-context-router
+/bin/zsh ./scripts/status-local-stack.sh`,
+			WorkingDir:   "/Users/conchi/workforce/python_workforce/agent-context-router",
+			TimeoutSec:   30,
+		},
 		// ==========================================
 		// 🐬 MySQL Migration Scripts (4 workflows)
 		// ==========================================
@@ -1468,11 +1529,8 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 }
 
 func seedDefaultServiceConfigs(gdb *gorm.DB) {
-	var count int64
-	gdb.Model(&model.ServiceConfig{}).Count(&count)
-	if count > 0 {
-		return
-	}
+	// Clean up removed legacy service configs
+	gdb.Where("slug IN (?)", []string{"personal-utils-backend", "personal-utils-frontend"}).Delete(&model.ServiceConfig{})
 
 	configs := []model.ServiceConfig{
 		{
@@ -1606,38 +1664,53 @@ func seedDefaultServiceConfigs(gdb *gorm.DB) {
 			SortOrder:      10,
 		},
 		{
-			Name:           "Personal Utils 核心后端服务",
-			Slug:           "personal-utils-backend",
-			Description:    "本地全功能开发运维工具箱 Go 核心 API 服务 (端口 :39888)",
-			ServiceType:    "host_process",
-			ProcessPattern: "server",
-			Port:           39888,
-			ConfigPath:     "/Users/conchi/workforce/go_workforce/personal_utils/server/cmd/server/main.go",
-			StartCmd:       "cd /Users/conchi/workforce/go_workforce/personal_utils/server && go run ./cmd/server/main.go",
-			StopCmd:        "pkill -f 'cmd/server'",
-			RestartCmd:     "pkill -f 'cmd/server' && cd /Users/conchi/workforce/go_workforce/personal_utils/server && go run ./cmd/server/main.go",
+			Name:           "Agent Context Router 核心服务 (API / MCP)",
+			Slug:           "agent-context-router-backend",
+			Description:    "工作空间上下文路由器与 AI Agent 工具网关，提供 MCP 服务与端点 (端口 :49173)",
+			ServiceType:    "docker",
+			ProcessPattern: "agent-context-router-backend-1",
+			Port:           49173,
+			ConfigPath:     "/Users/conchi/workforce/python_workforce/agent-context-router/docker-compose.yml",
+			StartCmd:       "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/start-local-stack.sh",
+			StopCmd:        "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/stop-local-stack.sh --all",
+			RestartCmd:     "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/stop-local-stack.sh --all && sleep 1 && /bin/zsh ./scripts/start-local-stack.sh",
 			SortOrder:      11,
 		},
 		{
-			Name:           "Personal Utils 前端交互管理台",
-			Slug:           "personal-utils-frontend",
-			Description:    "Vite + React 前端交互管理界面 (端口 :39889)",
-			ServiceType:    "host_process",
-			ProcessPattern: "node",
-			Port:           39889,
-			ConfigPath:     "/Users/conchi/workforce/go_workforce/personal_utils/web/vite.config.ts",
-			StartCmd:       "cd /Users/conchi/workforce/go_workforce/personal_utils/web && npm run dev",
-			StopCmd:        "pkill -f 'vite'",
-			RestartCmd:     "pkill -f 'vite' && cd /Users/conchi/workforce/go_workforce/personal_utils/web && npm run dev",
+			Name:           "Agent Context Router 前端 Web 控制台",
+			Slug:           "agent-context-router-frontend",
+			Description:    "Next.js 15 Web 控制台与可视化交互面板 (端口 :49175)",
+			ServiceType:    "docker",
+			ProcessPattern: "agent-context-router-frontend-1",
+			Port:           49175,
+			ConfigPath:     "/Users/conchi/workforce/python_workforce/agent-context-router/frontend/package.json",
+			StartCmd:       "cd /Users/conchi/workforce/python_workforce/agent-context-router && docker compose up -d frontend",
+			StopCmd:        "cd /Users/conchi/workforce/python_workforce/agent-context-router && docker compose stop frontend",
+			RestartCmd:     "cd /Users/conchi/workforce/python_workforce/agent-context-router && docker compose restart frontend",
 			SortOrder:      12,
 		},
 	}
 
 	for _, cfg := range configs {
-		gdb.Create(&cfg)
+		var existing model.ServiceConfig
+		if err := gdb.Where("slug = ?", cfg.Slug).First(&existing).Error; err != nil {
+			gdb.Create(&cfg)
+		} else {
+			existing.Name = cfg.Name
+			existing.Description = cfg.Description
+			existing.ServiceType = cfg.ServiceType
+			existing.ProcessPattern = cfg.ProcessPattern
+			existing.Port = cfg.Port
+			existing.ConfigPath = cfg.ConfigPath
+			existing.StartCmd = cfg.StartCmd
+			existing.StopCmd = cfg.StopCmd
+			existing.RestartCmd = cfg.RestartCmd
+			existing.SortOrder = cfg.SortOrder
+			gdb.Save(&existing)
+		}
 	}
 
-	log.Printf("[DB] Seeded %d initial service configs to database", len(configs))
+	log.Printf("[DB] Synchronized %d service configs to database", len(configs))
 }
 
 func seedDefaultProjectDirectories(gdb *gorm.DB) {
