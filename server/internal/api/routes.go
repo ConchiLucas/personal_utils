@@ -70,6 +70,7 @@ func SetupRouter(h *Handler, allowOrigins []string) *gin.Engine {
 
 		// Dashboard Habit Items
 		api.GET("/dashboard/items", h.GetDashboardItems)
+		api.POST("/dashboard/items/:id/run", h.RunDashboardItem)
 
 		// File Manager & MinIO Storage
 		api.POST("/files/upload", h.UploadFiles)

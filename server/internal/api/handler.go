@@ -934,6 +934,7 @@ func (h *Handler) GetDashboardItems(c *gin.Context) {
 		"command":  {},
 		"path":     {},
 		"document": {},
+		"script":   {},
 	}
 
 	for _, item := range items {
@@ -941,6 +942,63 @@ func (h *Handler) GetDashboardItems(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"data": grouped, "message": "Dashboard items fetched successfully"})
+}
+
+// RunDashboardItem executes a script command configured in dashboard_items
+func (h *Handler) RunDashboardItem(c *gin.Context) {
+	id := c.Param("id")
+	var item model.DashboardItem
+	if err := db.DB.First(&item, id).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "配置项未找到"})
+		return
+	}
+
+	cmdStr := strings.TrimSpace(item.Content)
+	if cmdStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "脚本执行命令不能为空"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 180*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "/bin/zsh", "-c", cmdStr)
+	cmd.Dir = "/Users/conchi/workforce"
+
+	start := time.Now()
+	outputBytes, err := cmd.CombinedOutput()
+	durationMs := time.Since(start).Milliseconds()
+
+	outputStr := string(outputBytes)
+	status := "success"
+	exitCode := 0
+
+	if err != nil {
+		status = "failed"
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			exitCode = exitErr.ExitCode()
+		} else if ctx.Err() == context.DeadlineExceeded {
+			exitCode = -1
+			outputStr += "\n[Timeout] 脚本执行超时 (超过 180 秒)"
+		} else {
+			exitCode = -2
+			outputStr += fmt.Sprintf("\n[Error] %v", err)
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": gin.H{
+			"id":          item.ID,
+			"title":       item.Title,
+			"command":     item.Content,
+			"status":      status,
+			"exit_code":   exitCode,
+			"output":      outputStr,
+			"duration_ms": durationMs,
+			"executed_at": time.Now(),
+		},
+		"message": "脚本执行完成",
+	})
 }
 
 func probeURLOnline(rawURL string) bool {

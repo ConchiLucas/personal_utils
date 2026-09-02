@@ -3,8 +3,6 @@ import {
   Globe,
   KeyRound,
   Terminal,
-  Folder,
-  FileText,
   ExternalLink,
   Copy,
   Check,
@@ -13,7 +11,10 @@ import {
   Sparkles,
   FolderOpen,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Play,
+  Loader2,
+  X
 } from 'lucide-react';
 import { api } from '../../api/client';
 import { DashboardItem, DashboardResponse } from '../../types';
@@ -25,6 +26,7 @@ export const HomeHub: React.FC = () => {
     command: [],
     path: [],
     document: [],
+    script: [],
   });
   const [loading, setLoading] = useState(false);
 
@@ -33,13 +35,25 @@ export const HomeHub: React.FC = () => {
     website: false,
     account: false,
     command: false,
-    path: false,
     document: false,
+    script: false,
   });
 
   const [revealedPasswords, setRevealedPasswords] = useState<Record<number, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  // Script execution states
+  const [runningScriptId, setRunningScriptId] = useState<number | null>(null);
+  const [executionResult, setExecutionResult] = useState<{
+    id?: number;
+    title: string;
+    command: string;
+    output: string;
+    status: string;
+    duration_ms: number;
+    exit_code: number;
+  } | null>(null);
 
   const showToast = (text: string) => {
     setToastMessage(text);
@@ -76,6 +90,24 @@ export const HomeHub: React.FC = () => {
     }
   };
 
+  const handleRunScript = async (item: DashboardItem) => {
+    setRunningScriptId(item.id);
+    try {
+      const res = await api.runDashboardItem(item.id);
+      const result = res.data;
+      if (result.status === 'success') {
+        showToast(`✅ [${item.title}] 执行完成 (${result.duration_ms}ms)`);
+      } else {
+        showToast(`❌ [${item.title}] 执行异常 (退出码: ${result.exit_code})`);
+      }
+      setExecutionResult(result);
+    } catch (err: any) {
+      showToast(`执行失败: ${err.message}`);
+    } finally {
+      setRunningScriptId(null);
+    }
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -94,6 +126,17 @@ export const HomeHub: React.FC = () => {
       api.getDashboardItems().then(setData).catch(() => {});
     }, 12000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Listen for ESC key to close modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setExecutionResult(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const renderSectionHeader = (
@@ -128,7 +171,7 @@ export const HomeHub: React.FC = () => {
     );
   };
 
-  const getVisibleItems = (items: DashboardItem[], sectionKey: string) => {
+  const getVisibleItems = (items: DashboardItem[] = [], sectionKey: string) => {
     if (expandedSections[sectionKey]) {
       return items;
     }
@@ -277,7 +320,7 @@ export const HomeHub: React.FC = () => {
                       <span className="text-zinc-200 truncate" title={username}>{username}</span>
                       <button
                         onClick={() => handleCopy(`user-${item.id}`, username, userLabel.replace(':', ''))}
-                        className="text-zinc-500 hover:text-zinc-300 p-0.5 shrink-0"
+                        className="text-zinc-500 hover:text-zinc-300 p-0.5 shrink-0 cursor-pointer"
                         title={`复制${userLabel.replace(':', '')}`}
                       >
                         {copiedId === `user-${item.id}` ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
@@ -292,14 +335,14 @@ export const HomeHub: React.FC = () => {
                       </span>
                       <button
                         onClick={() => togglePasswordVisibility(item.id)}
-                        className="text-zinc-500 hover:text-zinc-300 p-0.5 shrink-0"
+                        className="text-zinc-500 hover:text-zinc-300 p-0.5 shrink-0 cursor-pointer"
                         title={isRevealed ? '隐藏密码' : '显示密码'}
                       >
                         {isRevealed ? <EyeOff className="w-2.5 h-2.5" /> : <Eye className="w-2.5 h-2.5" />}
                       </button>
                       <button
                         onClick={() => handleCopy(`pwd-${item.id}`, password, pwdLabel.replace(':', ''))}
-                        className="text-zinc-500 hover:text-zinc-300 p-0.5 shrink-0"
+                        className="text-zinc-500 hover:text-zinc-300 p-0.5 shrink-0 cursor-pointer"
                         title={`复制${pwdLabel.replace(':', '')}`}
                       >
                         {copiedId === `pwd-${item.id}` ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
@@ -313,7 +356,7 @@ export const HomeHub: React.FC = () => {
         </div>
       </section>
 
-      {/* 3. 常用执行命令 (一行4个) */}
+      {/* 3. 常用执行命令 */}
       <section className="space-y-2.5">
         {renderSectionHeader(<Terminal className="w-3.5 h-3.5 text-emerald-400" />, '3. 常用执行命令', 'command')}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -326,13 +369,13 @@ export const HomeHub: React.FC = () => {
                 <span className="text-xs font-bold text-zinc-100 truncate">{item.title}</span>
                 <button
                   onClick={() => handleCopy(`cmd-${item.id}`, item.content, '命令')}
-                  className="px-1.5 py-0.5 rounded-md bg-[#18181b] hover:bg-[#27272a] text-zinc-300 hover:text-white border border-[#27272a] text-[10px] font-medium transition-all flex items-center gap-1 shrink-0"
+                  className="px-1.5 py-0.5 rounded-md bg-[#18181b] hover:bg-[#27272a] text-zinc-300 hover:text-white border border-[#27272a] text-[10px] font-medium transition-all flex items-center gap-1 shrink-0 cursor-pointer"
                 >
                   {copiedId === `cmd-${item.id}` ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5 text-blue-400" />}
                   <span>{copiedId === `cmd-${item.id}` ? '已复制' : '复制'}</span>
                 </button>
               </div>
-              <div className="bg-[#09090b] p-2 rounded-lg border border-[#27272a] font-mono text-[10px] text-emerald-400/90 truncate leading-relaxed" title={item.content}>
+              <div className="bg-[#09090b] p-2 rounded-lg border border-[#27272a] font-mono text-[10px] text-emerald-400/90 truncate leading-relaxed select-all" title={item.content}>
                 <code>{item.content}</code>
               </div>
             </div>
@@ -340,48 +383,9 @@ export const HomeHub: React.FC = () => {
         </div>
       </section>
 
-      {/* 4. 常用本地路径 */}
+      {/* 4. 常用文档与目录路径 (原第5行前移，支持访达打开所在目录) */}
       <section className="space-y-2.5">
-        {renderSectionHeader(<Folder className="w-3.5 h-3.5 text-sky-400" />, '4. 常用本地路径 (用来复制用)', 'path')}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {getVisibleItems(data.path, 'path').map((item) => (
-            <div
-              key={item.id}
-              className="bg-[#121215] border border-[#27272a] hover:border-zinc-700 rounded-xl p-3 space-y-2 transition-all group"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-zinc-100 truncate" title={item.title}>
-                  {item.title}
-                </span>
-              </div>
-              <div className="bg-[#18181b] p-2 rounded-lg border border-[#27272a] flex items-center justify-between gap-2">
-                <span
-                  className="font-mono text-[11px] text-sky-300 truncate select-all flex-1 cursor-pointer hover:text-sky-200 transition-colors"
-                  title={`${item.content} (点击复制)`}
-                  onClick={() => handleCopy(`path-${item.id}`, item.content, '路径')}
-                >
-                  {item.content}
-                </span>
-                <button
-                  onClick={() => handleCopy(`path-${item.id}`, item.content, '路径')}
-                  className="p-1 rounded hover:bg-[#27272a] text-zinc-400 hover:text-white transition-all shrink-0"
-                  title="复制路径"
-                >
-                  {copiedId === `path-${item.id}` ? (
-                    <Check className="w-3.5 h-3.5 text-emerald-400" />
-                  ) : (
-                    <Copy className="w-3.5 h-3.5 text-sky-400" />
-                  )}
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 5. 常用文档路径 */}
-      <section className="space-y-2.5">
-        {renderSectionHeader(<FileText className="w-3.5 h-3.5 text-purple-400" />, '5. 常用文档路径 (点击打开所在目录)', 'document')}
+        {renderSectionHeader(<FolderOpen className="w-3.5 h-3.5 text-purple-400" />, '4. 常用文档与目录路径 (点击打开所在目录)', 'document')}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {getVisibleItems(data.document, 'document').map((item) => (
             <div
@@ -391,13 +395,13 @@ export const HomeHub: React.FC = () => {
               <div className="text-xs font-bold text-zinc-100 truncate" title={item.title}>
                 {item.title}
               </div>
-              <div className="bg-[#18181b] p-2 rounded-lg border border-[#27272a] font-mono text-[10px] text-purple-300 truncate" title={item.content}>
+              <div className="bg-[#18181b] p-2 rounded-lg border border-[#27272a] font-mono text-[10px] text-purple-300 truncate select-all" title={item.content}>
                 {item.content}
               </div>
               <div className="flex items-center gap-1.5 pt-1">
                 <button
-                  onClick={() => handleCopy(`doc-${item.id}`, item.content, '文档路径')}
-                  className="p-1.5 rounded-lg bg-[#18181b] hover:bg-[#27272a] text-zinc-400 hover:text-white border border-[#27272a] transition-all"
+                  onClick={() => handleCopy(`doc-${item.id}`, item.content, '路径')}
+                  className="p-1.5 rounded-lg bg-[#18181b] hover:bg-[#27272a] text-zinc-400 hover:text-white border border-[#27272a] transition-all cursor-pointer shrink-0"
                   title="复制路径"
                 >
                   {copiedId === `doc-${item.id}` ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
@@ -405,7 +409,7 @@ export const HomeHub: React.FC = () => {
                 <button
                   onClick={() => handleOpenFile(item.content)}
                   className="flex-1 py-1.5 rounded-lg bg-purple-600/10 hover:bg-purple-600/20 text-purple-400 border border-purple-500/30 text-xs font-medium transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  title="在 macOS Finder 中打开文件所在目录"
+                  title="在 macOS 访达 (Finder) 中打开文件所在目录"
                 >
                   <FolderOpen className="w-3.5 h-3.5" />
                   <span>打开所在目录</span>
@@ -415,6 +419,134 @@ export const HomeHub: React.FC = () => {
           ))}
         </div>
       </section>
+
+      {/* 5. 常用快捷脚本执行 (新第5行，支持一键直接运行与查看日志) */}
+      <section className="space-y-2.5">
+        {renderSectionHeader(<Play className="w-3.5 h-3.5 text-rose-400" />, '5. 常用快捷脚本执行 (点击直接运行)', 'script')}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {getVisibleItems(data.script, 'script').map((item) => (
+            <div
+              key={item.id}
+              className="bg-[#121215] border border-[#27272a] hover:border-zinc-700 rounded-xl p-3 flex flex-col justify-between gap-2.5 transition-all group"
+            >
+              <div className="flex items-center justify-between gap-1.5">
+                <span className="text-xs font-bold text-zinc-100 truncate" title={item.title}>
+                  {item.title}
+                </span>
+                <button
+                  onClick={() => handleCopy(`script-${item.id}`, item.content, '命令')}
+                  className="p-1 rounded-md bg-[#18181b] hover:bg-[#27272a] text-zinc-400 hover:text-white border border-[#27272a] transition-all shrink-0 cursor-pointer"
+                  title="复制脚本命令"
+                >
+                  {copiedId === `script-${item.id}` ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
+                </button>
+              </div>
+
+              <div
+                className="bg-[#09090b] p-2 rounded-lg border border-[#27272a] font-mono text-[10px] text-zinc-400 truncate select-all leading-relaxed"
+                title={item.content}
+              >
+                <code>{item.content}</code>
+              </div>
+
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <button
+                  onClick={() => handleRunScript(item)}
+                  disabled={runningScriptId === item.id}
+                  className="flex-1 py-1.5 rounded-lg bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 border border-rose-500/30 text-xs font-medium transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                  title="在后台直接执行该脚本"
+                >
+                  {runningScriptId === item.id ? (
+                    <>
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                      <span>正在执行...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-3.5 h-3.5 fill-rose-400/20" />
+                      <span>运行脚本</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 脚本执行日志与结果输出弹窗 */}
+      {executionResult && (
+        <div
+          className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150"
+          onClick={() => setExecutionResult(null)}
+        >
+          <div
+            className="bg-[#121215] border border-[#27272a] rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between p-4 border-b border-[#27272a] bg-[#18181b]/50">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Terminal className="w-4 h-4 text-emerald-400 shrink-0" />
+                <h3 className="text-sm font-bold text-white truncate">{executionResult.title}</h3>
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-semibold shrink-0 ${
+                    executionResult.status === 'success'
+                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                      : 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                  }`}
+                >
+                  {executionResult.status === 'success' ? '执行成功' : '执行失败'}
+                </span>
+                <span className="text-[11px] font-mono text-zinc-500 shrink-0">
+                  {executionResult.duration_ms} ms
+                </span>
+              </div>
+              <button
+                onClick={() => setExecutionResult(null)}
+                className="p-1 rounded-lg hover:bg-[#27272a] text-zinc-400 hover:text-white transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-3 overflow-y-auto flex-1 font-mono text-xs">
+              <div>
+                <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">执行指令</span>
+                <div className="bg-[#09090b] p-2.5 rounded-lg border border-[#27272a] text-zinc-300 mt-1 break-all select-all">
+                  {executionResult.command}
+                </div>
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">标准控制台输出</span>
+                  {executionResult.output && (
+                    <button
+                      onClick={() => handleCopy('modal-output', executionResult.output, '日志输出')}
+                      className="text-[11px] text-zinc-400 hover:text-white flex items-center gap-1 cursor-pointer"
+                    >
+                      {copiedId === 'modal-output' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      <span>复制输出</span>
+                    </button>
+                  )}
+                </div>
+                <pre className="bg-black p-3 rounded-lg border border-[#27272a] text-emerald-400/90 mt-1 max-h-80 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+                  {executionResult.output || '(无标准输出)'}
+                </pre>
+              </div>
+            </div>
+
+            <div className="p-3 border-t border-[#27272a] bg-[#18181b]/30 flex justify-end gap-2">
+              <button
+                onClick={() => setExecutionResult(null)}
+                className="px-4 py-1.5 rounded-lg bg-[#27272a] hover:bg-[#3f3f46] text-white text-xs font-medium transition-all cursor-pointer"
+              >
+                关闭窗口
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

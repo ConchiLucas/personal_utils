@@ -172,6 +172,7 @@ export interface DashboardResponse {
   command: DashboardItem[];
   path: DashboardItem[];
   document: DashboardItem[];
+  script: DashboardItem[];
 }
 
 export interface FileRecord {

@@ -1507,39 +1507,7 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 			SortOrder: 6,
 		},
 
-		// 4. 常用本地路径 (path)
-		{
-			Section:   "path",
-			Title:     "Agent Context Router 工程目录",
-			Content:   "/Users/conchi/workforce/python_workforce/agent-context-router",
-			SortOrder: 1,
-		},
-		{
-			Section:   "path",
-			Title:     "English Workforce 工程目录",
-			Content:   "/Users/conchi/workforce/english_workforce",
-			SortOrder: 2,
-		},
-		{
-			Section:   "path",
-			Title:     "Stock Workforce 工程目录",
-			Content:   "/Users/conchi/workforce/stock_workforce",
-			SortOrder: 3,
-		},
-		{
-			Section:   "path",
-			Title:     "Personal Utils 工程目录",
-			Content:   "/Users/conchi/workforce/go_workforce/personal_utils",
-			SortOrder: 4,
-		},
-		{
-			Section:   "path",
-			Title:     "Workforce 代码根工作区",
-			Content:   "/Users/conchi/workforce",
-			SortOrder: 5,
-		},
-
-		// 5. 常用文档路径 (document)
+		// 4. 常用文档与目录路径 (document - 打开所在目录 / 复制)
 		{
 			Section:   "document",
 			Title:     "下载路径",
@@ -1566,8 +1534,45 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		},
 		{
 			Section:   "document",
-			Title:     "本地 Docker Compose 配置文件",
-			Content:   "/Users/conchi/workforce/go_workforce/personal_utils/docker-compose.yml",
+			Title:     "Workforce 代码根工作区",
+			Content:   "/Users/conchi/workforce",
+			SortOrder: 5,
+		},
+
+		// 5. 常用脚本执行 (script - 一键直接运行)
+		{
+			Section:   "script",
+			Title:     "Agent Context Router 启动 Native 服务栈",
+			Content:   "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/start-native-stack.sh",
+			Extra:     "拉起 Context Router 原生服务栈 (Backend 49173, Frontend 49175) 及本地 Runner",
+			SortOrder: 1,
+		},
+		{
+			Section:   "script",
+			Title:     "Context Router Host Runner 状态巡检",
+			Content:   "/Users/conchi/script/start-host-runner.sh status",
+			Extra:     "巡检宿主机 Host Runner 守护进程心跳与最近执行动作",
+			SortOrder: 2,
+		},
+		{
+			Section:   "script",
+			Title:     "攀枝花宿主机环境保障巡检 (ensure-panzhihua)",
+			Content:   "/Users/conchi/script/ensure-panzhihua-host-runtime.sh status",
+			Extra:     "一键体检 26 个微服务与中间件容器、共享网络、数据库代理与本地网关",
+			SortOrder: 3,
+		},
+		{
+			Section:   "script",
+			Title:     "Agent Context Router 停止 Native 服务栈",
+			Content:   "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/stop-native-stack.sh",
+			Extra:     "安全停止 Context Router 原生服务进程与 Host Runner",
+			SortOrder: 4,
+		},
+		{
+			Section:   "script",
+			Title:     "Workforce 全量项目 Git 状态巡检",
+			Content:   `for dir in /Users/conchi/workforce/*/*; do [ -d "$dir/.git" ] && echo "=== $(basename $(dirname "$dir"))/$(basename "$dir") ===" && git -C "$dir" status -s; done`,
+			Extra:     "快速扫描本地所有 workforce 项目的 git 脏代码与未提交修改",
 			SortOrder: 5,
 		},
 	}

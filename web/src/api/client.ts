@@ -289,7 +289,31 @@ export const api = {
     const res = await fetch(`${API_BASE}/dashboard/items`);
     if (!res.ok) throw new Error('Failed to fetch dashboard items');
     const json = await res.json();
-    return json.data || { website: [], account: [], command: [], path: [], document: [] };
+    return json.data || { website: [], account: [], command: [], path: [], document: [], script: [] };
+  },
+
+  async runDashboardItem(id: number): Promise<{
+    data: {
+      id: number;
+      title: string;
+      command: string;
+      status: 'success' | 'failed';
+      exit_code: number;
+      output: string;
+      duration_ms: number;
+      executed_at: string;
+    };
+    message: string;
+  }> {
+    const res = await fetch(`${API_BASE}/dashboard/items/${id}/run`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || '执行脚本失败');
+    }
+    return res.json();
   },
 
   async uploadFiles(files: File[]): Promise<FileRecord[]> {
