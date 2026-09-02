@@ -645,6 +645,41 @@ cd /Users/conchi/workforce/python_workforce/agent-context-router
 			WorkingDir:   "/Users/conchi/workforce/python_workforce/agent-context-router",
 			TimeoutSec:   30,
 		},
+		{
+			CategoryID:   opsCat.ID,
+			CategorySlug: opsCat.Slug,
+			Name:         "Host Runner 宿主机执行器守护管理 (start-host-runner.sh)",
+			Description:  "负责 Context Router 宿主机执行器的前后台生命周期控制 (支持 start / status / stop / restart)",
+			ScriptType:   "bash",
+			ExecMode:     "dynamic",
+			ParamsSchema: `[{"key":"ACTION","label":"管理动作 (status巡检 | start启动 | restart重启 | stop停止)","type":"select","options":["status","start","restart","stop"],"default":"status","required":true}]`,
+			DefaultParams: `{"ACTION":"status"}`,
+			Content: `#!/usr/bin/env bash
+set -euo pipefail
+ACTION="${ACTION:-status}"
+echo "⚙️ 正在执行 Host Runner 管理动作: ${ACTION}"
+/Users/conchi/script/start-host-runner.sh "${ACTION}"`,
+			WorkingDir:   "/Users/conchi/script",
+			TimeoutSec:   120,
+		},
+		{
+			CategoryID:   opsCat.ID,
+			CategorySlug: opsCat.Slug,
+			Name:         "攀枝花宿主机环境与微服务代理保障 (ensure-panzhihua-host-runtime.sh)",
+			Description:  "幂等巡检与保障本地 Docker 共享网络、微服务与中间件容器、数据库代理及本地 Nginx 网关",
+			ScriptType:   "bash",
+			ExecMode:     "dynamic",
+			ParamsSchema: `[{"key":"ACTION","label":"执行动作 (status巡检 | ensure保障恢复)","type":"select","options":["status","ensure"],"default":"status","required":true},{"key":"ENVIRONMENT","label":"运行环境 (local | test | uat)","type":"select","options":["local","test","uat"],"default":"local","required":true}]`,
+			DefaultParams: `{"ACTION":"status","ENVIRONMENT":"local"}`,
+			Content: `#!/usr/bin/env bash
+set -euo pipefail
+ACTION="${ACTION:-status}"
+ENVIRONMENT="${ENVIRONMENT:-local}"
+echo "🛡️ 正在执行攀枝花宿主机运行保障: action=${ACTION} environment=${ENVIRONMENT}"
+/Users/conchi/script/ensure-panzhihua-host-runtime.sh "${ACTION}" --environment "${ENVIRONMENT}"`,
+			WorkingDir:   "/Users/conchi/script",
+			TimeoutSec:   300,
+		},
 		// ==========================================
 		// 🐬 MySQL Migration Scripts (4 workflows)
 		// ==========================================
@@ -1704,6 +1739,19 @@ func seedDefaultServiceConfigs(gdb *gorm.DB) {
 			StopCmd:        "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/stop-native-stack.sh",
 			RestartCmd:     "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/restart-native-stack.sh",
 			SortOrder:      12,
+		},
+		{
+			Name:           "Context Router Host Runtime Runner 宿主机执行器",
+			Slug:           "context-router-host-runner",
+			Description:    "Agent Context Router 宿主机任务执行器与心跳守护进程 (负责攀枝花网关代理与环境保障)",
+			ServiceType:    "host_process",
+			ProcessPattern: "context_router_host_runner.py",
+			Port:           0,
+			ConfigPath:     "/Users/conchi/script/start-host-runner.sh",
+			StartCmd:       "/Users/conchi/script/start-host-runner.sh start",
+			StopCmd:        "/Users/conchi/script/start-host-runner.sh stop",
+			RestartCmd:     "/Users/conchi/script/start-host-runner.sh restart",
+			SortOrder:      13,
 		},
 	}
 
