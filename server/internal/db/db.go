@@ -1478,8 +1478,8 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		},
 		{
 			Section:   "command",
-			Title:     "Workforce 核心端口监听扫描",
-			Content:   "lsof -iTCP -sTCP:LISTEN -P -n | grep -E ':(5432|6379|19100|19101|17888|18080|18999|5173|7505)'",
+			Title:     "杀死指定端口占用进程",
+			Content:   "kill -9 $(lsof -ti:8080)",
 			SortOrder: 2,
 		},
 		{
