@@ -485,12 +485,20 @@ spring:
 		Title:    "anyrobert/cursor-api-proxy",
 		Slug:     "cursor-api-proxy-guide",
 		Category: "AI / Tools",
-		Tags:     "Cursor,OpenAI,Proxy,LLM,API,SDK",
+		Tags:     "Cursor,OpenAI,Proxy,LLM,API,SDK,Pollinations,ImageGen",
 		IsPinned: false,
 		Content: `# anyrobert/cursor-api-proxy
 
 > **GitHub 仓库**：[anyrobert/cursor-api-proxy](https://github.com/anyrobert/cursor-api-proxy)  
-> **核心定位**：基于 Cursor 命令行工具（` + "`cursor-agent` / `agent`" + `）的 **OpenAI 兼容 HTTP 反向代理服务与 SDK**。`,
+> **核心定位**：基于 Cursor 命令行工具（` + "`cursor-agent` / `agent`" + `）的 **OpenAI 兼容 HTTP 反向代理服务与 SDK**。
+
+---
+
+### pollinations.ai
+
+> **官方网站**：[pollinations.ai](https://pollinations.ai/)  
+> **GitHub 仓库**：[pollinations/pollinations](https://github.com/pollinations/pollinations)  
+> **核心定位**：开源全模态生成式 AI 聚合与 API 平台，支持**免 Key / 一行 URL 直接生成图片（Flux/SDXL）**及 **OpenAI 兼容的文本对话接口**。`,
 	}
 
 	var existingCp model.Note

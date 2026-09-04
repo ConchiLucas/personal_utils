@@ -19,6 +19,7 @@ server/*.db
 server/*.sqlite
 server/*.sqlite3
 *.exe
+.run/
 
 # Environment & Local Overrides
 .env
