@@ -1480,39 +1480,63 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		// 3. 常用执行命令 (command)
 		{
 			Section:   "command",
-			Title:     "攀枝花 Maven 打包编译命令",
-			Content:   `/bin/sh "/Applications/IntelliJ IDEA.app/Contents/plugins/maven/lib/maven3/bin/mvn" -s /Users/conchi/workforce/company_workforce/panzhihua_dev_workforce/settings-pzh.xml -Dmaven.repo.local=/Users/conchi/.m2/repository -Dmaven.test.skip=true clean install`,
+			Title:     "Workforce 核心端口监听扫描",
+			Content:   `lsof -iTCP -sTCP:LISTEN -P -n | grep -E ':(5432|6379|19100|19101|17888|18080|18999|5173|7505|49175|39888|39889)'`,
 			SortOrder: 1,
 		},
 		{
 			Section:   "command",
-			Title:     "杀死指定端口占用进程",
-			Content:   "kill -9 $(lsof -ti:8080)",
+			Title:     "Agent Context Router 状态巡检",
+			Content:   "zsh /Users/conchi/workforce/python_workforce/agent-context-router/scripts/status-native-stack.sh",
 			SortOrder: 2,
+		},
+		{
+			Section:   "command",
+			Title:     "Agent Context Router 一键启动",
+			Content:   "zsh /Users/conchi/workforce/python_workforce/agent-context-router/scripts/start-native-stack.sh",
+			SortOrder: 3,
+		},
+		{
+			Section:   "command",
+			Title:     "Agent Context Router 一键重启",
+			Content:   "zsh /Users/conchi/workforce/python_workforce/agent-context-router/scripts/restart-native-stack.sh",
+			SortOrder: 4,
+		},
+		{
+			Section:   "command",
+			Title:     "Agent Context Router 一键停止",
+			Content:   "zsh /Users/conchi/workforce/python_workforce/agent-context-router/scripts/stop-native-stack.sh",
+			SortOrder: 5,
+		},
+		{
+			Section:   "command",
+			Title:     "Agent Context Router 依赖环境自检",
+			Content:   "zsh /Users/conchi/workforce/python_workforce/agent-context-router/scripts/bootstrap-native.sh",
+			SortOrder: 6,
 		},
 		{
 			Section:   "command",
 			Title:     "Docker 运行容器与端口总览",
 			Content:   `docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"`,
-			SortOrder: 3,
+			SortOrder: 7,
 		},
 		{
 			Section:   "command",
 			Title:     "清理 Docker 悬空镜像与缓存",
 			Content:   "docker system prune -f && docker system df",
-			SortOrder: 4,
+			SortOrder: 8,
 		},
 		{
 			Section:   "command",
 			Title:     "Workforce 全量项目 Git 状态巡检",
 			Content:   `for dir in /Users/conchi/workforce/*/*; do [ -d "$dir/.git" ] && echo "=== $(basename $(dirname "$dir"))/$(basename "$dir") ===" && git -C "$dir" status -s; done`,
-			SortOrder: 5,
+			SortOrder: 9,
 		},
 		{
 			Section:   "command",
 			Title:     "本地网络连通性测试",
 			Content:   "ping -c 4 127.0.0.1",
-			SortOrder: 6,
+			SortOrder: 10,
 		},
 
 		// 4. 常用文档与目录路径 (document - 打开所在目录 / 复制)
