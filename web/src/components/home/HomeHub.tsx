@@ -37,7 +37,7 @@ export const HomeHub: React.FC = () => {
     account: true,
     command: true,
     document: true,
-    script: false,
+    script: true,
   });
 
   const [revealedPasswords, setRevealedPasswords] = useState<Record<number, boolean>>({});
