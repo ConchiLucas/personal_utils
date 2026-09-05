@@ -944,6 +944,33 @@ func (h *Handler) GetDashboardItems(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"data": grouped, "message": "Dashboard items fetched successfully"})
 }
 
+type ReorderDashboardReq struct {
+	Section string `json:"section"`
+	ItemIDs []uint `json:"item_ids"`
+}
+
+func (h *Handler) ReorderDashboardItems(c *gin.Context) {
+	var req ReorderDashboardReq
+	if err := c.ShouldBindJSON(&req); err != nil || req.Section == "" || len(req.ItemIDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "参数无效"})
+		return
+	}
+
+	tx := db.DB.Begin()
+	for i, id := range req.ItemIDs {
+		if err := tx.Model(&model.DashboardItem{}).
+			Where("id = ? AND section = ?", id, req.Section).
+			Update("sort_order", i+1).Error; err != nil {
+			tx.Rollback()
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "更新排序失败: " + err.Error()})
+			return
+		}
+	}
+	tx.Commit()
+
+	c.JSON(http.StatusOK, gin.H{"message": "排序已保存"})
+}
+
 // RunDashboardItem executes a script command configured in dashboard_items
 func (h *Handler) RunDashboardItem(c *gin.Context) {
 	id := c.Param("id")

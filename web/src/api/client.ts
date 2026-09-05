@@ -292,6 +292,18 @@ export const api = {
     return json.data || { website: [], account: [], command: [], path: [], document: [], script: [] };
   },
 
+  async reorderDashboardItems(section: string, itemIds: number[]): Promise<void> {
+    const res = await fetch(`${API_BASE}/dashboard/items/reorder`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ section, item_ids: itemIds }),
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Failed to reorder dashboard items');
+    }
+  },
+
   async runDashboardItem(id: number): Promise<{
     data: {
       id: number;

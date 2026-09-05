@@ -15,7 +15,8 @@ import {
   Play,
   Loader2,
   X,
-  RotateCcw
+  RotateCcw,
+  GripVertical
 } from 'lucide-react';
 import { api } from '../../api/client';
 import { DashboardItem, DashboardResponse } from '../../types';
@@ -46,6 +47,18 @@ export const HomeHub: React.FC = () => {
 
   // In-memory edited values for command and document sections (no database persistence required)
   const [editedValues, setEditedValues] = useState<Record<number, string>>({});
+
+  // Drag and Drop state (strictly isolated per section, cannot drag across different sections)
+  const [draggedItem, setDraggedItem] = useState<{
+    section: keyof DashboardResponse;
+    id: number;
+    index: number;
+  } | null>(null);
+  const [dragOverTarget, setDragOverTarget] = useState<{
+    section: keyof DashboardResponse;
+    id: number;
+    index: number;
+  } | null>(null);
 
   const getItemValue = (item: DashboardItem) => {
     return editedValues[item.id] !== undefined ? editedValues[item.id] : item.content;
@@ -145,20 +158,97 @@ export const HomeHub: React.FC = () => {
     loadData();
     const interval = setInterval(() => {
       api.getDashboardItems().then(setData).catch(() => {});
-    }, 12000);
+    }, 15000);
     return () => clearInterval(interval);
   }, []);
 
-  // Listen for ESC key to close modal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setExecutionResult(null);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  // Drag & Drop handlers with strict cross-section isolation
+  const handleDragStart = (
+    e: React.DragEvent,
+    section: keyof DashboardResponse,
+    item: DashboardItem,
+    index: number
+  ) => {
+    setDraggedItem({ section, id: item.id, index });
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', JSON.stringify({ section, id: item.id, index }));
+  };
+
+  const handleDragOver = (
+    e: React.DragEvent,
+    section: keyof DashboardResponse,
+    item: DashboardItem,
+    index: number
+  ) => {
+    // 严格限制：只能在同一板块内拖动，禁止跨板块拖动！
+    if (!draggedItem || draggedItem.section !== section) {
+      return;
+    }
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    if (!dragOverTarget || dragOverTarget.id !== item.id) {
+      setDragOverTarget({ section, id: item.id, index });
+    }
+  };
+
+  const handleDragLeave = (_e: React.DragEvent, section: keyof DashboardResponse, itemId: number) => {
+    if (dragOverTarget?.id === itemId && dragOverTarget?.section === section) {
+      setDragOverTarget(null);
+    }
+  };
+
+  const handleDrop = async (
+    e: React.DragEvent,
+    section: keyof DashboardResponse,
+    dropIndex: number
+  ) => {
+    e.preventDefault();
+    if (!draggedItem || draggedItem.section !== section) {
+      setDraggedItem(null);
+      setDragOverTarget(null);
+      return;
+    }
+
+    const fromIndex = draggedItem.index;
+    if (fromIndex === dropIndex) {
+      setDraggedItem(null);
+      setDragOverTarget(null);
+      return;
+    }
+
+    // 本地乐观重排
+    const currentList = [...(data[section] || [])];
+    const [moved] = currentList.splice(fromIndex, 1);
+    currentList.splice(dropIndex, 0, moved);
+
+    const updatedList = currentList.map((item, idx) => ({
+      ...item,
+      sort_order: idx + 1,
+    }));
+
+    setData((prev) => ({
+      ...prev,
+      [section]: updatedList,
+    }));
+
+    setDraggedItem(null);
+    setDragOverTarget(null);
+
+    // 持久化保存到数据库
+    try {
+      await api.reorderDashboardItems(section, updatedList.map((item) => item.id));
+      showToast('排序已保存');
+    } catch (err: any) {
+      console.error('Failed to save reordered items:', err);
+      showToast(`保存排序失败: ${err.message}`);
+      loadData();
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverTarget(null);
+  };
 
   const renderSectionHeader = (
     icon: React.ReactNode,
@@ -175,14 +265,14 @@ export const HomeHub: React.FC = () => {
           {icon}
           <span>{title}</span>
           <span className="text-[10px] font-mono text-zinc-500 font-normal">
-            ({items.length} 项)
+            ({items.length} 项 · 可拖动卡片排序)
           </span>
         </div>
 
         {canExpand && (
           <button
             onClick={() => toggleSection(sectionKey)}
-            className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-200 px-2 py-0.5 rounded-md hover:bg-[#18181b] transition-all"
+            className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-zinc-200 px-2 py-0.5 rounded-md hover:bg-[#18181b] transition-all cursor-pointer"
           >
             <span>{isExpanded ? '收起' : `展开剩余 ${items.length - 4} 项`}</span>
             {isExpanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
@@ -217,64 +307,82 @@ export const HomeHub: React.FC = () => {
       <section className="space-y-2.5">
         {renderSectionHeader(<Globe className="w-3.5 h-3.5 text-blue-400" />, '1. 常用网站跳转', 'website')}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {getVisibleItems(data.website, 'website').map((item) => (
-            <div
-              key={item.id}
-              className={`bg-[#121215] border rounded-xl p-3 flex items-center justify-between gap-2.5 transition-all ${
-                item.is_online
-                  ? 'border-[#27272a] hover:border-emerald-500/50 hover:shadow-[0_0_12px_rgba(16,185,129,0.08)]'
-                  : 'border-[#27272a] hover:border-zinc-700 opacity-80'
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                {/* 状态指示绿点 */}
-                <div className="relative flex items-center justify-center shrink-0" title={item.is_online ? '已启动 (服务在线)' : '未启动'}>
-                  {item.is_online ? (
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span>
-                    </span>
-                  ) : (
-                    <span className="inline-flex rounded-full h-1.5 w-1.5 bg-zinc-600"></span>
-                  )}
+          {getVisibleItems(data.website, 'website').map((item, index) => {
+            const isDragging = draggedItem?.id === item.id;
+            const isDragOver = dragOverTarget?.id === item.id && dragOverTarget?.section === 'website';
+
+            return (
+              <div
+                key={item.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, 'website', item, index)}
+                onDragOver={(e) => handleDragOver(e, 'website', item, index)}
+                onDragLeave={(e) => handleDragLeave(e, 'website', item.id)}
+                onDrop={(e) => handleDrop(e, 'website', index)}
+                onDragEnd={handleDragEnd}
+                className={`group bg-[#121215] border rounded-xl p-3 flex items-center justify-between gap-2.5 transition-all cursor-grab active:cursor-grabbing ${
+                  isDragging
+                    ? 'opacity-30 border-dashed border-sky-500 scale-[0.98]'
+                    : isDragOver
+                    ? 'border-sky-500 ring-2 ring-sky-500/40 bg-sky-500/10 scale-[1.02]'
+                    : item.is_online
+                    ? 'border-[#27272a] hover:border-emerald-500/50 hover:shadow-[0_0_12px_rgba(16,185,129,0.08)]'
+                    : 'border-[#27272a] hover:border-zinc-700 opacity-80'
+                }`}
+              >
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {/* 拖动手柄指示 */}
+                  <GripVertical className="w-3 h-3 text-zinc-600 group-hover:text-zinc-400 opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
+
+                  {/* 状态指示绿点 */}
+                  <div className="relative flex items-center justify-center shrink-0" title={item.is_online ? '已启动 (服务在线)' : '未启动'}>
+                    {item.is_online ? (
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]"></span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex rounded-full h-1.5 w-1.5 bg-zinc-600"></span>
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-zinc-100 truncate" title={item.title}>
+                        {item.title}
+                      </span>
+                    </div>
+                    <div className="text-[11px] font-mono text-zinc-500 truncate mt-0.5" title={item.content}>
+                      {item.content}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs font-bold text-zinc-100 truncate" title={item.title}>
-                      {item.title}
-                    </span>
-                  </div>
-                  <div className="text-[11px] font-mono text-zinc-500 truncate mt-0.5" title={item.content}>
-                    {item.content}
-                  </div>
+                <div className="flex items-center gap-1 shrink-0" onMouseDown={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => handleCopy(`web-${item.id}`, item.content, '链接')}
+                    className="p-1.5 rounded-lg bg-[#18181b] hover:bg-[#27272a] text-zinc-400 hover:text-white border border-[#27272a] transition-all cursor-pointer"
+                    title="复制链接"
+                  >
+                    {copiedId === `web-${item.id}` ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                  <a
+                    href={item.content}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                      item.is_online
+                        ? 'bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.15)]'
+                        : 'bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border-blue-500/30'
+                    }`}
+                    title={item.is_online ? '服务已启动 - 点击打开' : '打开网站'}
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
                 </div>
               </div>
-
-              <div className="flex items-center gap-1 shrink-0">
-                <button
-                  onClick={() => handleCopy(`web-${item.id}`, item.content, '链接')}
-                  className="p-1.5 rounded-lg bg-[#18181b] hover:bg-[#27272a] text-zinc-400 hover:text-white border border-[#27272a] transition-all"
-                  title="复制链接"
-                >
-                  {copiedId === `web-${item.id}` ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-                </button>
-                <a
-                  href={item.content}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`p-1.5 rounded-lg border transition-all ${
-                    item.is_online
-                      ? 'bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-400 border-emerald-500/30 shadow-[0_0_8px_rgba(16,185,129,0.15)]'
-                      : 'bg-blue-600/10 hover:bg-blue-600/20 text-blue-400 border-blue-500/30'
-                  }`}
-                  title={item.is_online ? '服务已启动 - 点击打开' : '打开网站'}
-                >
-                  <ExternalLink className="w-3.5 h-3.5" />
-                </a>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -282,7 +390,10 @@ export const HomeHub: React.FC = () => {
       <section className="space-y-2.5">
         {renderSectionHeader(<KeyRound className="w-3.5 h-3.5 text-amber-400" />, '2. 常用账户密码', 'account')}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {getVisibleItems(data.account, 'account').map((item) => {
+          {getVisibleItems(data.account, 'account').map((item, index) => {
+            const isDragging = draggedItem?.id === item.id;
+            const isDragOver = dragOverTarget?.id === item.id && dragOverTarget?.section === 'account';
+
             const isRevealed = !!revealedPasswords[item.id];
             let username = 'root';
             let password = '';
@@ -310,13 +421,28 @@ export const HomeHub: React.FC = () => {
             return (
               <div
                 key={item.id}
-                className="bg-[#121215] border border-[#27272a] hover:border-zinc-700 rounded-xl p-3 space-y-2 transition-all"
+                draggable
+                onDragStart={(e) => handleDragStart(e, 'account', item, index)}
+                onDragOver={(e) => handleDragOver(e, 'account', item, index)}
+                onDragLeave={(e) => handleDragLeave(e, 'account', item.id)}
+                onDrop={(e) => handleDrop(e, 'account', index)}
+                onDragEnd={handleDragEnd}
+                className={`group bg-[#121215] border rounded-xl p-3 space-y-2 transition-all cursor-grab active:cursor-grabbing ${
+                  isDragging
+                    ? 'opacity-30 border-dashed border-sky-500 scale-[0.98]'
+                    : isDragOver
+                    ? 'border-sky-500 ring-2 ring-sky-500/40 bg-sky-500/10 scale-[1.02]'
+                    : 'border-[#27272a] hover:border-zinc-700'
+                }`}
               >
                 <div className="flex items-center justify-between gap-1.5">
-                  <span className="text-xs font-bold text-zinc-100 truncate" title={item.title}>
-                    {item.title}
-                  </span>
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <GripVertical className="w-3 h-3 text-zinc-600 group-hover:text-zinc-400 opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
+                    <span className="text-xs font-bold text-zinc-100 truncate" title={item.title}>
+                      {item.title}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0" onMouseDown={(e) => e.stopPropagation()}>
                     <span className="text-[10px] font-mono text-zinc-500 truncate max-w-[100px]" title={host}>
                       {host}
                     </span>
@@ -325,7 +451,7 @@ export const HomeHub: React.FC = () => {
                         href={linkUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="p-1 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition-all"
+                        className="p-1 rounded bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition-all cursor-pointer"
                         title={`打开链接: ${linkUrl}`}
                       >
                         <ExternalLink className="w-2.5 h-2.5" />
@@ -334,11 +460,14 @@ export const HomeHub: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="bg-[#18181b] p-2 rounded-lg border border-[#27272a] font-mono text-[11px] space-y-1.5">
+                <div
+                  className="bg-[#18181b] p-2 rounded-lg border border-[#27272a] font-mono text-[11px] space-y-1.5 cursor-default"
+                  onMouseDown={(e) => e.stopPropagation()}
+                >
                   <div className="flex items-center justify-between gap-1.5">
                     <span className="text-zinc-500 shrink-0 text-[10px]">{userLabel}</span>
                     <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
-                      <span className="text-zinc-200 truncate" title={username}>{username}</span>
+                      <span className="text-zinc-200 truncate select-all" title={username}>{username}</span>
                       <button
                         onClick={() => handleCopy(`user-${item.id}`, username, userLabel.replace(':', ''))}
                         className="text-zinc-500 hover:text-zinc-300 p-0.5 shrink-0 cursor-pointer"
@@ -351,7 +480,7 @@ export const HomeHub: React.FC = () => {
                   <div className="flex items-center justify-between gap-1.5">
                     <span className="text-zinc-500 shrink-0 text-[10px]">{pwdLabel}</span>
                     <div className="flex items-center gap-1 min-w-0 flex-1 justify-end">
-                      <span className="text-amber-400 truncate" title={isRevealed ? password : ''}>
+                      <span className="text-amber-400 truncate select-all" title={isRevealed ? password : ''}>
                         {isRevealed ? password : '••••••••••••'}
                       </span>
                       <button
@@ -381,21 +510,35 @@ export const HomeHub: React.FC = () => {
       <section className="space-y-2.5">
         {renderSectionHeader(<Terminal className="w-3.5 h-3.5 text-emerald-400" />, '3. 常用执行命令 (可修改后直接复制)', 'command')}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {getVisibleItems(data.command, 'command').map((item) => {
+          {getVisibleItems(data.command, 'command').map((item, index) => {
+            const isDragging = draggedItem?.id === item.id;
+            const isDragOver = dragOverTarget?.id === item.id && dragOverTarget?.section === 'command';
+
             const currentValue = getItemValue(item);
             const isEdited = isItemEdited(item);
 
             return (
               <div
                 key={item.id}
-                className={`bg-[#121215] border rounded-xl p-3 flex flex-col justify-between gap-2.5 transition-all ${
-                  isEdited
+                draggable
+                onDragStart={(e) => handleDragStart(e, 'command', item, index)}
+                onDragOver={(e) => handleDragOver(e, 'command', item, index)}
+                onDragLeave={(e) => handleDragLeave(e, 'command', item.id)}
+                onDrop={(e) => handleDrop(e, 'command', index)}
+                onDragEnd={handleDragEnd}
+                className={`group bg-[#121215] border rounded-xl p-3 flex flex-col justify-between gap-2.5 transition-all cursor-grab active:cursor-grabbing ${
+                  isDragging
+                    ? 'opacity-30 border-dashed border-sky-500 scale-[0.98]'
+                    : isDragOver
+                    ? 'border-sky-500 ring-2 ring-sky-500/40 bg-sky-500/10 scale-[1.02]'
+                    : isEdited
                     ? 'border-emerald-500/50 shadow-[0_0_10px_rgba(16,185,129,0.08)]'
                     : 'border-[#27272a] hover:border-zinc-700'
                 }`}
               >
                 <div className="flex items-center justify-between gap-1.5">
                   <div className="flex items-center gap-1.5 min-w-0">
+                    <GripVertical className="w-3 h-3 text-zinc-600 group-hover:text-zinc-400 opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
                     <span className="text-xs font-bold text-zinc-100 truncate" title={item.title}>
                       {item.title}
                     </span>
@@ -405,7 +548,7 @@ export const HomeHub: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-1 shrink-0" onMouseDown={(e) => e.stopPropagation()}>
                     {isEdited && (
                       <button
                         onClick={() => handleResetItem(item.id)}
@@ -426,7 +569,7 @@ export const HomeHub: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="relative">
+                <div className="relative" onMouseDown={(e) => e.stopPropagation()}>
                   <input
                     type="text"
                     value={currentValue}
@@ -447,25 +590,39 @@ export const HomeHub: React.FC = () => {
         </div>
       </section>
 
-      {/* 4. 常用文档与目录路径 (原第5行前移，支持即时修改并打开所在目录) */}
+      {/* 4. 常用文档与目录路径 (支持即时修改并打开所在目录) */}
       <section className="space-y-2.5">
         {renderSectionHeader(<FolderOpen className="w-3.5 h-3.5 text-purple-400" />, '4. 常用文档与目录路径 (可修改后打开所在目录)', 'document')}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {getVisibleItems(data.document, 'document').map((item) => {
+          {getVisibleItems(data.document, 'document').map((item, index) => {
+            const isDragging = draggedItem?.id === item.id;
+            const isDragOver = dragOverTarget?.id === item.id && dragOverTarget?.section === 'document';
+
             const currentValue = getItemValue(item);
             const isEdited = isItemEdited(item);
 
             return (
               <div
                 key={item.id}
-                className={`bg-[#121215] border rounded-xl p-3 flex flex-col justify-between gap-2.5 transition-all ${
-                  isEdited
+                draggable
+                onDragStart={(e) => handleDragStart(e, 'document', item, index)}
+                onDragOver={(e) => handleDragOver(e, 'document', item, index)}
+                onDragLeave={(e) => handleDragLeave(e, 'document', item.id)}
+                onDrop={(e) => handleDrop(e, 'document', index)}
+                onDragEnd={handleDragEnd}
+                className={`group bg-[#121215] border rounded-xl p-3 flex flex-col justify-between gap-2.5 transition-all cursor-grab active:cursor-grabbing ${
+                  isDragging
+                    ? 'opacity-30 border-dashed border-sky-500 scale-[0.98]'
+                    : isDragOver
+                    ? 'border-sky-500 ring-2 ring-sky-500/40 bg-sky-500/10 scale-[1.02]'
+                    : isEdited
                     ? 'border-purple-500/50 shadow-[0_0_10px_rgba(168,85,247,0.08)]'
                     : 'border-[#27272a] hover:border-zinc-700'
                 }`}
               >
                 <div className="flex items-center justify-between gap-1.5">
                   <div className="flex items-center gap-1.5 min-w-0">
+                    <GripVertical className="w-3 h-3 text-zinc-600 group-hover:text-zinc-400 opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
                     <span className="text-xs font-bold text-zinc-100 truncate" title={item.title}>
                       {item.title}
                     </span>
@@ -478,6 +635,7 @@ export const HomeHub: React.FC = () => {
                   {isEdited && (
                     <button
                       onClick={() => handleResetItem(item.id)}
+                      onMouseDown={(e) => e.stopPropagation()}
                       className="p-1 rounded hover:bg-[#27272a] text-zinc-400 hover:text-purple-400 transition-all cursor-pointer shrink-0"
                       title="恢复为默认路径"
                     >
@@ -486,7 +644,7 @@ export const HomeHub: React.FC = () => {
                   )}
                 </div>
 
-                <div className="relative">
+                <div className="relative" onMouseDown={(e) => e.stopPropagation()}>
                   <input
                     type="text"
                     value={currentValue}
@@ -502,7 +660,7 @@ export const HomeHub: React.FC = () => {
                   />
                 </div>
 
-                <div className="flex items-center gap-1.5 pt-0.5">
+                <div className="flex items-center gap-1.5 pt-0.5" onMouseDown={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => handleCopy(`doc-${item.id}`, currentValue, '路径')}
                     className="p-1.5 rounded-lg bg-[#18181b] hover:bg-[#27272a] text-zinc-400 hover:text-white border border-[#27272a] transition-all cursor-pointer shrink-0"
@@ -525,57 +683,79 @@ export const HomeHub: React.FC = () => {
         </div>
       </section>
 
-      {/* 5. 常用快捷脚本执行 (新第5行，支持一键直接运行与查看日志) */}
+      {/* 5. 常用快捷脚本执行 (支持一键直接运行与查看日志) */}
       <section className="space-y-2.5">
         {renderSectionHeader(<Play className="w-3.5 h-3.5 text-rose-400" />, '5. 常用快捷脚本执行 (点击直接运行)', 'script')}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          {getVisibleItems(data.script, 'script').map((item) => (
-            <div
-              key={item.id}
-              className="bg-[#121215] border border-[#27272a] hover:border-zinc-700 rounded-xl p-3 flex flex-col justify-between gap-2.5 transition-all group"
-            >
-              <div className="flex items-center justify-between gap-1.5">
-                <span className="text-xs font-bold text-zinc-100 truncate" title={item.title}>
-                  {item.title}
-                </span>
-                <button
-                  onClick={() => handleCopy(`script-${item.id}`, item.content, '命令')}
-                  className="p-1 rounded-md bg-[#18181b] hover:bg-[#27272a] text-zinc-400 hover:text-white border border-[#27272a] transition-all shrink-0 cursor-pointer"
-                  title="复制脚本命令"
-                >
-                  {copiedId === `script-${item.id}` ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
-                </button>
-              </div>
+          {getVisibleItems(data.script, 'script').map((item, index) => {
+            const isDragging = draggedItem?.id === item.id;
+            const isDragOver = dragOverTarget?.id === item.id && dragOverTarget?.section === 'script';
 
+            return (
               <div
-                className="bg-[#09090b] p-2 rounded-lg border border-[#27272a] font-mono text-[10px] text-zinc-400 truncate select-all leading-relaxed"
-                title={item.content}
+                key={item.id}
+                draggable
+                onDragStart={(e) => handleDragStart(e, 'script', item, index)}
+                onDragOver={(e) => handleDragOver(e, 'script', item, index)}
+                onDragLeave={(e) => handleDragLeave(e, 'script', item.id)}
+                onDrop={(e) => handleDrop(e, 'script', index)}
+                onDragEnd={handleDragEnd}
+                className={`group bg-[#121215] border rounded-xl p-3 flex flex-col justify-between gap-2.5 transition-all cursor-grab active:cursor-grabbing ${
+                  isDragging
+                    ? 'opacity-30 border-dashed border-sky-500 scale-[0.98]'
+                    : isDragOver
+                    ? 'border-sky-500 ring-2 ring-sky-500/40 bg-sky-500/10 scale-[1.02]'
+                    : 'border-[#27272a] hover:border-zinc-700'
+                }`}
               >
-                <code>{item.content}</code>
-              </div>
+                <div className="flex items-center justify-between gap-1.5">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <GripVertical className="w-3 h-3 text-zinc-600 group-hover:text-zinc-400 opacity-40 group-hover:opacity-100 transition-opacity shrink-0" />
+                    <span className="text-xs font-bold text-zinc-100 truncate" title={item.title}>
+                      {item.title}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleCopy(`script-${item.id}`, item.content, '命令')}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    className="p-1 rounded-md bg-[#18181b] hover:bg-[#27272a] text-zinc-400 hover:text-white border border-[#27272a] transition-all shrink-0 cursor-pointer"
+                    title="复制脚本命令"
+                  >
+                    {copiedId === `script-${item.id}` ? <Check className="w-2.5 h-2.5 text-emerald-400" /> : <Copy className="w-2.5 h-2.5" />}
+                  </button>
+                </div>
 
-              <div className="flex items-center gap-1.5 pt-0.5">
-                <button
-                  onClick={() => handleRunScript(item)}
-                  disabled={runningScriptId === item.id}
-                  className="flex-1 py-1.5 rounded-lg bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 border border-rose-500/30 text-xs font-medium transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
-                  title="在后台直接执行该脚本"
+                <div
+                  className="bg-[#09090b] p-2 rounded-lg border border-[#27272a] font-mono text-[10px] text-zinc-400 truncate select-all leading-relaxed cursor-text"
+                  title={item.content}
+                  onMouseDown={(e) => e.stopPropagation()}
                 >
-                  {runningScriptId === item.id ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      <span>正在执行...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-3.5 h-3.5 fill-rose-400/20" />
-                      <span>运行脚本</span>
-                    </>
-                  )}
-                </button>
+                  <code>{item.content}</code>
+                </div>
+
+                <div className="flex items-center gap-1.5 pt-0.5" onMouseDown={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => handleRunScript(item)}
+                    disabled={runningScriptId === item.id}
+                    className="flex-1 py-1.5 rounded-lg bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 border border-rose-500/30 text-xs font-medium transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                    title="在后台直接执行该脚本"
+                  >
+                    {runningScriptId === item.id ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        <span>正在执行...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-3.5 h-3.5 fill-rose-400/20" />
+                        <span>运行脚本</span>
+                      </>
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
