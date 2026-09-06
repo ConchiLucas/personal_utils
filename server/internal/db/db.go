@@ -1422,8 +1422,8 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		// 1. 常用网站 (website)
 		{Section: "website", Title: "Agent Context Router 控制台", Content: "http://127.0.0.1:49175/", SortOrder: 1},
 		{Section: "website", Title: "English Material 英语素材管理平台", Content: "http://127.0.0.1:19638/", SortOrder: 2},
-		{Section: "website", Title: "卢沁一 · 学习工作台", Content: "http://localhost:19081/", SortOrder: 3},
-		{Section: "website", Title: "学习内容后台 (数学模块)", Content: "http://localhost:19091/math", SortOrder: 4},
+		{Section: "website", Title: "家长后台", Content: "http://localhost:19081/", SortOrder: 3},
+		{Section: "website", Title: "题目后台", Content: "http://localhost:19091/math", SortOrder: 4},
 		{Section: "website", Title: "拼音学习孩子端 (Pinyin App)", Content: "http://localhost:19112/", SortOrder: 5},
 		{Section: "website", Title: "科普探索孩子端 (Science App)", Content: "http://localhost:19122/", SortOrder: 6},
 		{Section: "website", Title: "英语启蒙孩子端 (English App)", Content: "http://localhost:19132/", SortOrder: 7},
