@@ -256,6 +256,6 @@ export interface ProjectDirectory {
   path_exists?: boolean;
 }
 
-export type MainNavTab = 'home' | 'containers' | 'notes' | 'projects' | 'agile_request' | 'scripts' | 'files' | 'services';
+export type MainNavTab = 'home' | 'navigator' | 'containers' | 'notes' | 'projects' | 'agile_request' | 'scripts' | 'files' | 'services';
 
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Boxes, Layers, Cpu, BookOpen, Send, Terminal, Folder } from 'lucide-react';
+import { Home, Boxes, Layers, Cpu, BookOpen, Send, Terminal, Folder, Globe } from 'lucide-react';
 import { MainNavTab } from '../../types';
 
 interface TopNavProps {
@@ -44,6 +44,22 @@ export const TopNav: React.FC<TopNavProps> = ({ activeTab, onSelectTab }) => {
               <span>首页</span>
               <span className="text-[9px] px-1 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
                 Hub
+              </span>
+            </button>
+
+            {/* 2. iframe导航台 */}
+            <button
+              onClick={() => onSelectTab('navigator')}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                activeTab === 'navigator'
+                  ? 'bg-[#27272a] text-white shadow-sm font-semibold'
+                  : 'text-[#a1a1aa] hover:text-white hover:bg-[#18181b]'
+              }`}
+            >
+              <Globe className={`w-3.5 h-3.5 ${activeTab === 'navigator' ? 'text-blue-400' : 'text-[#71717a]'}`} />
+              <span>iframe导航台</span>
+              <span className="text-[9px] px-1 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                Navigator
               </span>
             </button>
 

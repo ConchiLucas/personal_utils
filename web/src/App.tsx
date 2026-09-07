@@ -10,6 +10,7 @@ import { AgileRequestManager } from './components/agile-request/AgileRequestMana
 import { ScriptHub } from './components/scripts/ScriptHub';
 import { FileManager } from './components/files/FileManager';
 import { ConfigManager } from './components/config-manager/ConfigManager';
+import { IframeNavigator } from './components/navigator/IframeNavigator';
 import { Workspace, ContainerInfo, MainNavTab } from './types';
 import { api } from './api/client';
 
@@ -115,6 +116,7 @@ export function App() {
       {/* Main Content Area */}
       <main className="flex-1 flex overflow-hidden">
         {activeTab === 'home' && <HomeHub />}
+        {activeTab === 'navigator' && <IframeNavigator />}
 
         {activeTab === 'containers' && (
           <>
