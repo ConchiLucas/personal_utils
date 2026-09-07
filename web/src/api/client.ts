@@ -519,6 +519,25 @@ export const api = {
     });
     if (!res.ok) throw new Error('Failed to delete project service');
   },
+
+  async getPreference(key: string): Promise<string> {
+    const res = await fetch(`${API_BASE}/preferences/${key}`);
+    if (!res.ok) return '';
+    const json = await res.json().catch(() => ({}));
+    return json.value || '';
+  },
+
+  async setPreference(key: string, value: string): Promise<void> {
+    const res = await fetch(`${API_BASE}/preferences/${key}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ value }),
+    });
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      throw new Error(errJson.error || 'Failed to save preference');
+    }
+  },
 };
 
 

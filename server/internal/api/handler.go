@@ -1667,3 +1667,40 @@ func (h *Handler) DeleteProjectService(c *gin.Context) {
 	})
 }
 
+// GetPreference retrieves a user preference by key
+func (h *Handler) GetPreference(c *gin.Context) {
+	key := c.Param("key")
+	var pref model.UserPreference
+	if err := db.DB.Where("key = ?", key).First(&pref).Error; err != nil {
+		c.JSON(http.StatusOK, gin.H{"key": key, "value": ""})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"key": pref.Key, "value": pref.Value})
+}
+
+// SetPreference saves or updates a user preference by key
+func (h *Handler) SetPreference(c *gin.Context) {
+	key := c.Param("key")
+	var req struct {
+		Value string `json:"value"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "参数无效"})
+		return
+	}
+
+	pref := model.UserPreference{
+		Key:       key,
+		Value:     req.Value,
+		UpdatedAt: time.Now(),
+	}
+
+	if err := db.DB.Save(&pref).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存偏好设置失败: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "偏好设置已保存", "key": key, "value": req.Value})
+}
+
+

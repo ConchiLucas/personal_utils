@@ -96,6 +96,10 @@ func SetupRouter(h *Handler, allowOrigins []string) *gin.Engine {
 		api.POST("/project-services", h.CreateProjectService)
 		api.PUT("/project-services/:id", h.UpdateProjectService)
 		api.DELETE("/project-services/:id", h.DeleteProjectService)
+
+		// User Preferences (持久化偏好)
+		api.GET("/preferences/:key", h.GetPreference)
+		api.PUT("/preferences/:key", h.SetPreference)
 	}
 
 	return r

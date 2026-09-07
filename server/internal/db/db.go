@@ -69,6 +69,7 @@ func Init(dsn string) (*gorm.DB, error) {
 		&model.ServiceConfig{},
 		&model.ProjectDirectory{},
 		&model.ProjectService{},
+		&model.UserPreference{},
 	); err != nil {
 		return nil, fmt.Errorf("auto migrate tables: %w", err)
 	}
