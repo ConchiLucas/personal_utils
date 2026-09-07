@@ -10,8 +10,9 @@ type DashboardItem struct {
 	Title     string    `json:"title" gorm:"column:title;type:varchar(255);not null"`
 	Content   string    `json:"content" gorm:"column:content;type:text;not null"`              // url, cmd, path, or host
 	Extra     string    `json:"extra" gorm:"column:extra;type:text"`                          // json metadata e.g. {"username":"root", "password":"...", "host":"..."}
-	SortOrder int       `json:"sort_order" gorm:"column:sort_order;default:0"`
-	IsOnline  bool      `json:"is_online" gorm:"-"`
+	SortOrder     int       `json:"sort_order" gorm:"column:sort_order;default:0"`
+	WorkspaceSlug string    `json:"workspace_slug" gorm:"column:workspace_slug;type:varchar(50);index"`
+	IsOnline      bool      `json:"is_online" gorm:"-"`
 }
 
 func (DashboardItem) TableName() string {

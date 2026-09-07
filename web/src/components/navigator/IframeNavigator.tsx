@@ -16,13 +16,58 @@ import {
   AlertCircle,
   RefreshCw,
   Layers,
+  ChevronDown,
 } from 'lucide-react';
 import { api } from '../../api/client';
-import { DashboardItem } from '../../types';
+import { DashboardItem, Workspace } from '../../types';
+
+// 工作空间展示元数据映射
+const WORKSPACE_PRESETS: Record<string, { label: string; short: string; icon: string; tagClass: string }> = {
+  'all': {
+    label: '全部工作空间',
+    short: '全部',
+    icon: '🌟',
+    tagClass: 'bg-zinc-800 text-zinc-300 border-zinc-700',
+  },
+  'kid-workbench': {
+    label: '🎒 儿童学习工作台',
+    short: '儿童工作台',
+    icon: '🎒',
+    tagClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+  },
+  'python_workforce': {
+    label: '🤖 python_workforce',
+    short: 'Python',
+    icon: '🤖',
+    tagClass: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+  },
+  'rob_english_word': {
+    label: '🔤 rob_english_word',
+    short: '单词学习',
+    icon: '🔤',
+    tagClass: 'bg-orange-500/15 text-orange-300 border-orange-500/30',
+  },
+  'stock_workforce': {
+    label: '📈 stock_workforce',
+    short: '股票量化',
+    icon: '📈',
+    tagClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+  },
+  'shared-config-center': {
+    label: '⚙️ shared-config-center',
+    short: '配置中心',
+    icon: '⚙️',
+    tagClass: 'bg-purple-500/15 text-purple-300 border-purple-500/30',
+  },
+};
 
 export const IframeNavigator: React.FC = () => {
   const [items, setItems] = useState<DashboardItem[]>([]);
+  const [workspaces, setWorkspaces] = useState<Workspace[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [selectedWorkspace, setSelectedWorkspace] = useState<string>(() => {
+    return localStorage.getItem('iframe_nav_selected_workspace') || 'all';
+  });
   const [selectedId, setSelectedId] = useState<number | null>(() => {
     const saved = localStorage.getItem('iframe_nav_selected_id');
     return saved ? Number(saved) : null;
@@ -47,14 +92,18 @@ export const IframeNavigator: React.FC = () => {
     setTimeout(() => setToastMessage(null), 2000);
   };
 
-  const loadItems = async () => {
+  const loadData = async () => {
     try {
       setLoading(true);
-      const res = await api.getDashboardItems();
-      const websites = res.website || [];
+      const [dashRes, wsRes] = await Promise.all([
+        api.getDashboardItems(),
+        api.getWorkspaces().catch(() => []),
+      ]);
+      const websites = dashRes.website || [];
       setItems(websites);
+      setWorkspaces(wsRes);
 
-      // 如果当前选中的 ID 不存在或为空，自动选中第一个在线项目（若无则选中第一个项目）
+      // 验证当前选中的 ID，若不存在或不在当前工作空间内，则自动切换首个
       setSelectedId((prevId) => {
         if (prevId && websites.some((w) => w.id === prevId)) {
           return prevId;
@@ -63,18 +112,22 @@ export const IframeNavigator: React.FC = () => {
         return firstOnline ? firstOnline.id : websites[0]?.id ?? null;
       });
     } catch (err: any) {
-      console.error('Failed to load dashboard items for navigator:', err);
-      showToast(`加载常用网站失败: ${err.message}`);
+      console.error('Failed to load dashboard items or workspaces:', err);
+      showToast(`加载失败: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadItems();
+    loadData();
   }, []);
 
-  // 持久化当前选中的项目
+  // 持久化当前选中的工作空间与项目
+  useEffect(() => {
+    localStorage.setItem('iframe_nav_selected_workspace', selectedWorkspace);
+  }, [selectedWorkspace]);
+
   useEffect(() => {
     if (selectedId) {
       localStorage.setItem('iframe_nav_selected_id', String(selectedId));
@@ -86,7 +139,7 @@ export const IframeNavigator: React.FC = () => {
     localStorage.setItem('iframe_nav_sidebar_collapsed', String(sidebarCollapsed));
   }, [sidebarCollapsed]);
 
-  // 全屏变化监听
+  // 全屏事件监听
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -95,13 +148,73 @@ export const IframeNavigator: React.FC = () => {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
-  const activeItem = useMemo(() => {
-    return items.find((item) => item.id === selectedId) || null;
-  }, [items, selectedId]);
+  // 计算各个工作空间包含的项目数量及列表
+  const workspaceOptions = useMemo(() => {
+    // 统计各 slug 出现次数
+    const countMap: Record<string, number> = {};
+    items.forEach((item) => {
+      const slug = item.workspace_slug || 'other';
+      countMap[slug] = (countMap[slug] || 0) + 1;
+    });
 
-  // 搜索和状态筛选过滤后的列表
+    // 组合有条目的工作空间选项
+    const list: { slug: string; name: string; short: string; icon: string; count: number; tagClass: string }[] = [
+      {
+        slug: 'all',
+        name: '全部工作空间',
+        short: '全部',
+        icon: '🌟',
+        count: items.length,
+        tagClass: WORKSPACE_PRESETS['all'].tagClass,
+      },
+    ];
+
+    // 优先按照已知 slug 顺序加入
+    const presetSlugs = ['kid-workbench', 'python_workforce', 'rob_english_word', 'stock_workforce', 'shared-config-center'];
+    presetSlugs.forEach((slug) => {
+      if (countMap[slug]) {
+        const wsFromDb = workspaces.find((w) => w.slug === slug);
+        const preset = WORKSPACE_PRESETS[slug];
+        list.push({
+          slug,
+          name: wsFromDb?.name || preset?.label || slug,
+          short: preset?.short || wsFromDb?.name || slug,
+          icon: preset?.icon || '📁',
+          count: countMap[slug],
+          tagClass: preset?.tagClass || 'bg-zinc-800 text-zinc-300 border-zinc-700',
+        });
+      }
+    });
+
+    // 加入其他未在 preset 中的 slug
+    Object.keys(countMap).forEach((slug) => {
+      if (!presetSlugs.includes(slug) && slug !== 'all') {
+        const wsFromDb = workspaces.find((w) => w.slug === slug);
+        list.push({
+          slug,
+          name: wsFromDb?.name || slug,
+          short: wsFromDb?.name || slug,
+          icon: '📁',
+          count: countMap[slug],
+          tagClass: 'bg-zinc-800 text-zinc-300 border-zinc-700',
+        });
+      }
+    });
+
+    return list;
+  }, [items, workspaces]);
+
+  // 根据当前选中的工作空间过滤列表
+  const workspaceItems = useMemo(() => {
+    if (selectedWorkspace === 'all') {
+      return items;
+    }
+    return items.filter((item) => item.workspace_slug === selectedWorkspace);
+  }, [items, selectedWorkspace]);
+
+  // 搜索和在线过滤后的最终列表
   const filteredItems = useMemo(() => {
-    return items.filter((item) => {
+    return workspaceItems.filter((item) => {
       const matchSearch =
         !searchQuery.trim() ||
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -109,11 +222,32 @@ export const IframeNavigator: React.FC = () => {
       const matchOnline = !filterOnlineOnly || item.is_online;
       return matchSearch && matchOnline;
     });
-  }, [items, searchQuery, filterOnlineOnly]);
+  }, [workspaceItems, searchQuery, filterOnlineOnly]);
 
-  const onlineCount = useMemo(() => {
-    return items.filter((item) => item.is_online).length;
-  }, [items]);
+  const workspaceOnlineCount = useMemo(() => {
+    return workspaceItems.filter((item) => item.is_online).length;
+  }, [workspaceItems]);
+
+  const activeItem = useMemo(() => {
+    return items.find((item) => item.id === selectedId) || null;
+  }, [items, selectedId]);
+
+  // 切换工作空间分组
+  const handleSelectWorkspace = (slug: string) => {
+    setSelectedWorkspace(slug);
+    // 切换后如果当前选中的站点不在新工作空间下，则自动选中新工作空间的首个站点
+    const targetItems = slug === 'all' ? items : items.filter((item) => item.workspace_slug === slug);
+    if (targetItems.length > 0) {
+      const hasCurrent = targetItems.some((item) => item.id === selectedId);
+      if (!hasCurrent) {
+        const firstOnline = targetItems.find((w) => w.is_online);
+        const nextSelected = firstOnline ? firstOnline.id : targetItems[0].id;
+        setSelectedId(nextSelected);
+        setIframeLoading(true);
+        setIframeKey((prev) => prev + 1);
+      }
+    }
+  };
 
   // 切换选中站点
   const handleSelectItem = (item: DashboardItem) => {
@@ -172,7 +306,7 @@ export const IframeNavigator: React.FC = () => {
 
   return (
     <div ref={containerRef} className="flex h-full w-full bg-[#09090b] text-zinc-100 overflow-hidden relative">
-      {/* Toast Notification */}
+      {/* Toast 提示 */}
       {toastMessage && (
         <div className="fixed top-16 right-6 z-50 px-3.5 py-2 rounded-lg bg-zinc-800/95 border border-zinc-700 text-xs text-white shadow-xl shadow-black/50 animate-in fade-in slide-in-from-top-2 duration-200">
           {toastMessage}
@@ -182,7 +316,7 @@ export const IframeNavigator: React.FC = () => {
       {/* 左侧：常用项目导航侧边栏 */}
       <aside
         className={`flex flex-col border-r border-[#27272a] bg-[#0d0d10] transition-all duration-300 ease-in-out shrink-0 ${
-          sidebarCollapsed ? 'w-14' : 'w-72 sm:w-80'
+          sidebarCollapsed ? 'w-14' : 'w-72 sm:w-84'
         }`}
       >
         {/* 侧边栏头部 */}
@@ -197,7 +331,7 @@ export const IframeNavigator: React.FC = () => {
                 <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
                   <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.8)]" />
                   <span>
-                    {onlineCount}/{items.length} 在线
+                    {workspaceOnlineCount}/{workspaceItems.length} 在线
                   </span>
                 </div>
               </div>
@@ -207,7 +341,7 @@ export const IframeNavigator: React.FC = () => {
           <div className="flex items-center gap-1 ml-auto">
             {!sidebarCollapsed && (
               <button
-                onClick={loadItems}
+                onClick={loadData}
                 title="重新探测并刷新服务列表"
                 className="p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-md transition-colors"
               >
@@ -224,7 +358,7 @@ export const IframeNavigator: React.FC = () => {
           </div>
         </div>
 
-        {/* 折叠模式下的简单图标展示 */}
+        {/* 折叠模式下的简单展示 */}
         {sidebarCollapsed ? (
           <div className="flex-1 overflow-y-auto py-2 px-1 flex flex-col gap-1.5 items-center">
             {filteredItems.map((item) => {
@@ -241,7 +375,6 @@ export const IframeNavigator: React.FC = () => {
                   }`}
                 >
                   <span className="text-xs font-bold">{item.title.slice(0, 1)}</span>
-                  {/* 在线状态小点 */}
                   <span
                     className={`absolute bottom-1 right-1 w-2 h-2 rounded-full border-2 border-[#0d0d10] ${
                       item.is_online ? 'bg-emerald-500' : 'bg-zinc-600'
@@ -253,13 +386,61 @@ export const IframeNavigator: React.FC = () => {
           </div>
         ) : (
           <>
-            {/* 搜索与快捷过滤 */}
-            <div className="p-3 border-b border-[#27272a] flex flex-col gap-2 shrink-0 bg-[#09090b]/50">
+            {/* 工作空间分组选择器与胶囊条 */}
+            <div className="p-2.5 border-b border-[#27272a] bg-[#121216]/60 flex flex-col gap-2 shrink-0">
+              {/* 下拉选择器 */}
+              <div className="relative">
+                <select
+                  value={selectedWorkspace}
+                  onChange={(e) => handleSelectWorkspace(e.target.value)}
+                  className="w-full appearance-none pl-3 pr-8 py-1.5 bg-[#18181c] border border-[#27272a] hover:border-zinc-700 focus:border-blue-500 rounded-lg text-xs font-medium text-zinc-200 focus:outline-none transition-colors cursor-pointer"
+                >
+                  {workspaceOptions.map((ws) => (
+                    <option key={ws.slug} value={ws.slug} className="bg-[#18181c] text-zinc-200">
+                      {ws.icon} {ws.name} ({ws.count})
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="w-3.5 h-3.5 text-zinc-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              </div>
+
+              {/* 快捷切换胶囊 Pill 按钮列表 */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none select-none">
+                {workspaceOptions.map((ws) => {
+                  const isActive = selectedWorkspace === ws.slug;
+                  return (
+                    <button
+                      key={ws.slug}
+                      onClick={() => handleSelectWorkspace(ws.slug)}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-medium whitespace-nowrap transition-all flex items-center gap-1 shrink-0 ${
+                        isActive
+                          ? 'bg-blue-600/20 text-blue-400 border border-blue-500/40 shadow-sm'
+                          : 'bg-[#18181c] text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/80 border border-transparent'
+                      }`}
+                      title={`${ws.name} (${ws.count} 个项目)`}
+                    >
+                      <span>{ws.icon}</span>
+                      <span>{ws.short}</span>
+                      <span
+                        className={`text-[9px] px-1 py-0.2 rounded-full font-mono ${
+                          isActive ? 'bg-blue-500/30 text-blue-300' : 'bg-zinc-800 text-zinc-500'
+                        }`}
+                      >
+                        {ws.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 搜索与在线过滤 */}
+            <div className="p-2.5 border-b border-[#27272a] flex flex-col gap-2 shrink-0 bg-[#09090b]/50">
               <div className="relative">
                 <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
-                  placeholder="搜索项目名称或端口..."
+                  placeholder="在当前分组内搜索项目或端口..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full pl-8 pr-3 py-1.5 bg-[#121215] border border-[#27272a] focus:border-blue-500 rounded-lg text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none transition-colors"
@@ -283,7 +464,7 @@ export const IframeNavigator: React.FC = () => {
                       : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
                   }`}
                 >
-                  全部 ({items.length})
+                  全部 ({workspaceItems.length})
                 </button>
                 <button
                   onClick={() => setFilterOnlineOnly(true)}
@@ -294,7 +475,7 @@ export const IframeNavigator: React.FC = () => {
                   }`}
                 >
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                  仅看在线 ({onlineCount})
+                  仅看在线 ({workspaceOnlineCount})
                 </button>
               </div>
             </div>
@@ -308,12 +489,13 @@ export const IframeNavigator: React.FC = () => {
                 </div>
               ) : filteredItems.length === 0 ? (
                 <div className="py-10 text-center text-zinc-500 text-xs">
-                  未匹配到相关项目
+                  当前工作空间内未找到匹配项目
                 </div>
               ) : (
                 filteredItems.map((item) => {
                   const isSelected = item.id === selectedId;
                   const portBadge = formatUrlBadge(item.content);
+                  const wsPreset = item.workspace_slug ? WORKSPACE_PRESETS[item.workspace_slug] : null;
 
                   return (
                     <div
@@ -351,10 +533,20 @@ export const IframeNavigator: React.FC = () => {
                                 {item.title}
                               </span>
                             </div>
-                            <div className="flex items-center gap-1.5 mt-0.5">
+
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                               <span className="text-[10px] font-mono text-zinc-500 bg-zinc-900/90 px-1 py-0.2 rounded border border-zinc-800 truncate">
                                 {portBadge}
                               </span>
+
+                              {/* 全局视图下展示所属工作空间微标 */}
+                              {selectedWorkspace === 'all' && wsPreset && (
+                                <span
+                                  className={`text-[9px] px-1 py-0.2 rounded border font-medium truncate ${wsPreset.tagClass}`}
+                                >
+                                  {wsPreset.short}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -403,6 +595,17 @@ export const IframeNavigator: React.FC = () => {
                   <h3 className="text-xs font-bold text-white truncate max-w-[200px] sm:max-w-xs" title={activeItem.title}>
                     {activeItem.title}
                   </h3>
+
+                  {/* 对应所属工作空间标 */}
+                  {activeItem.workspace_slug && WORKSPACE_PRESETS[activeItem.workspace_slug] && (
+                    <span
+                      className={`hidden lg:inline-flex text-[10px] px-1.5 py-0.5 rounded border font-medium ${
+                        WORKSPACE_PRESETS[activeItem.workspace_slug].tagClass
+                      }`}
+                    >
+                      {WORKSPACE_PRESETS[activeItem.workspace_slug].short}
+                    </span>
+                  )}
                 </div>
 
                 {/* 仿浏览器地址栏 */}
@@ -414,7 +617,7 @@ export const IframeNavigator: React.FC = () => {
 
               {/* 右侧：视口切换与控制按钮 */}
               <div className="flex items-center gap-1.5 shrink-0">
-                {/* 视口尺寸切换器 (特别优化 iPad 横屏应用) */}
+                {/* 视口尺寸切换器 */}
                 <div className="hidden sm:flex items-center bg-[#16161a] border border-[#27272a] rounded-lg p-0.5 text-xs text-zinc-400">
                   <button
                     onClick={() => setViewportMode('full')}
@@ -549,9 +752,9 @@ export const IframeNavigator: React.FC = () => {
             <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 mb-3">
               <Layers className="w-6 h-6" />
             </div>
-            <h3 className="text-sm font-semibold text-zinc-200 mb-1">请选择要浏览的项目</h3>
+            <h3 className="text-sm font-semibold text-zinc-200 mb-1">当前工作空间暂无项目</h3>
             <p className="text-xs text-zinc-500 max-w-sm">
-              从左侧列表中点击任意常用网站，即可在此工作台无缝预览并操作该页面。
+              请切换上方的工作空间分组或选择其他分类以查看并预览项目。
             </p>
           </div>
         )}

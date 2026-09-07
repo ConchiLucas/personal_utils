@@ -192,6 +192,16 @@ func seedDefaultData(gdb *gorm.DB) {
 			IsDefault:   false,
 			SortOrder:   7,
 		},
+		{
+			Name:        "🎒 kid-workbench",
+			Slug:        "kid-workbench",
+			Description: "儿童学习工作台 (古诗、短句、成语、逻辑、拼音、科普、英语、算数、识字)",
+			HostType:    "local_docker",
+			Color:       "amber",
+			Icon:        "book-open",
+			IsDefault:   false,
+			SortOrder:   8,
+		},
 	}
 
 	for _, ws := range defaultWorkspaces {
@@ -1420,26 +1430,26 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 
 	items := []model.DashboardItem{
 		// 1. 常用网站 (website)
-		{Section: "website", Title: "Agent Context Router 控制台", Content: "http://127.0.0.1:49175/", SortOrder: 1},
-		{Section: "website", Title: "English Material 英语素材管理平台", Content: "http://127.0.0.1:19638/", SortOrder: 2},
-		{Section: "website", Title: "家长后台", Content: "http://localhost:19081/", SortOrder: 3},
-		{Section: "website", Title: "题目后台", Content: "http://localhost:19091/math", SortOrder: 4},
-		{Section: "website", Title: "拼音学习孩子端 (Pinyin App)", Content: "http://localhost:19112/", SortOrder: 5},
-		{Section: "website", Title: "科普探索孩子端 (Science App)", Content: "http://localhost:19122/", SortOrder: 6},
-		{Section: "website", Title: "英语启蒙孩子端 (English App)", Content: "http://localhost:19132/", SortOrder: 7},
-		{Section: "website", Title: "趣味算数孩子端 (Math App)", Content: "http://localhost:19142/", SortOrder: 8},
-		{Section: "website", Title: "识字学习孩子端 (Literacy App)", Content: "http://localhost:19152/", SortOrder: 9},
-		{Section: "website", Title: "古诗学习孩子端 (Poem App)", Content: "http://localhost:19162/", SortOrder: 10},
-		{Section: "website", Title: "英语短句孩子端 (Phrase App)", Content: "http://localhost:19172/", SortOrder: 11},
-		{Section: "website", Title: "成语学习孩子端 (Chengyu App)", Content: "http://localhost:19182/", SortOrder: 12},
-		{Section: "website", Title: "逻辑思维孩子端 (Logic App)", Content: "http://localhost:19192/", SortOrder: 13},
-		{Section: "website", Title: "英语单词背诵平台 (Rob Word)", Content: "http://localhost:6111/", SortOrder: 14},
-		{Section: "website", Title: "句子完形填空平台 (Cloze Web)", Content: "http://localhost:6014/", SortOrder: 15},
-		{Section: "website", Title: "english-word 运营后台", Content: "http://127.0.0.1:6016/", SortOrder: 16},
-		{Section: "website", Title: "股票量化交易前端 (Stock Vue)", Content: "http://localhost:6021/", SortOrder: 17},
-		{Section: "website", Title: "股票调度大盘 (Stock Schedule Web)", Content: "http://localhost:6022/", SortOrder: 18},
-		{Section: "website", Title: "统一收件箱监控大盘 (Watch Inbox)", Content: "http://127.0.0.1:18501/", SortOrder: 19},
-		{Section: "website", Title: "共享配置中心 (Config Center Web)", Content: "http://127.0.0.1:18427/", SortOrder: 20},
+		{Section: "website", Title: "Agent Context Router 控制台", Content: "http://127.0.0.1:49175/", SortOrder: 1, WorkspaceSlug: "python_workforce"},
+		{Section: "website", Title: "English Material 英语素材管理平台", Content: "http://127.0.0.1:19638/", SortOrder: 2, WorkspaceSlug: "python_workforce"},
+		{Section: "website", Title: "家长后台", Content: "http://localhost:19081/", SortOrder: 3, WorkspaceSlug: "kid-workbench"},
+		{Section: "website", Title: "题目后台", Content: "http://localhost:19091/math", SortOrder: 4, WorkspaceSlug: "kid-workbench"},
+		{Section: "website", Title: "拼音学习孩子端 (Pinyin App)", Content: "http://localhost:19112/", SortOrder: 5, WorkspaceSlug: "kid-workbench"},
+		{Section: "website", Title: "科普探索孩子端 (Science App)", Content: "http://localhost:19122/", SortOrder: 6, WorkspaceSlug: "kid-workbench"},
+		{Section: "website", Title: "英语启蒙孩子端 (English App)", Content: "http://localhost:19132/", SortOrder: 7, WorkspaceSlug: "kid-workbench"},
+		{Section: "website", Title: "趣味算数孩子端 (Math App)", Content: "http://localhost:19142/", SortOrder: 8, WorkspaceSlug: "kid-workbench"},
+		{Section: "website", Title: "识字学习孩子端 (Literacy App)", Content: "http://localhost:19152/", SortOrder: 9, WorkspaceSlug: "kid-workbench"},
+		{Section: "website", Title: "古诗学习孩子端 (Poem App)", Content: "http://localhost:19162/", SortOrder: 10, WorkspaceSlug: "kid-workbench"},
+		{Section: "website", Title: "英语短句孩子端 (Phrase App)", Content: "http://localhost:19172/", SortOrder: 11, WorkspaceSlug: "kid-workbench"},
+		{Section: "website", Title: "成语学习孩子端 (Chengyu App)", Content: "http://localhost:19182/", SortOrder: 12, WorkspaceSlug: "kid-workbench"},
+		{Section: "website", Title: "逻辑思维孩子端 (Logic App)", Content: "http://localhost:19192/", SortOrder: 13, WorkspaceSlug: "kid-workbench"},
+		{Section: "website", Title: "英语单词背诵平台 (Rob Word)", Content: "http://localhost:6111/", SortOrder: 14, WorkspaceSlug: "rob_english_word"},
+		{Section: "website", Title: "句子完形填空平台 (Cloze Web)", Content: "http://localhost:6014/", SortOrder: 15, WorkspaceSlug: "rob_english_word"},
+		{Section: "website", Title: "english-word 运营后台", Content: "http://127.0.0.1:6016/", SortOrder: 16, WorkspaceSlug: "rob_english_word"},
+		{Section: "website", Title: "股票量化交易前端 (Stock Vue)", Content: "http://localhost:6021/", SortOrder: 17, WorkspaceSlug: "stock_workforce"},
+		{Section: "website", Title: "股票调度大盘 (Stock Schedule Web)", Content: "http://localhost:6022/", SortOrder: 18, WorkspaceSlug: "stock_workforce"},
+		{Section: "website", Title: "统一收件箱监控大盘 (Watch Inbox)", Content: "http://127.0.0.1:18501/", SortOrder: 19, WorkspaceSlug: "python_workforce"},
+		{Section: "website", Title: "共享配置中心 (Config Center Web)", Content: "http://127.0.0.1:18427/", SortOrder: 20, WorkspaceSlug: "shared-config-center"},
 
 		// 2. 常用账户密码 (account)
 		{
