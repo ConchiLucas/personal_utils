@@ -496,7 +496,7 @@ spring:
 		Title:    "anyrobert/cursor-api-proxy",
 		Slug:     "cursor-api-proxy-guide",
 		Category: "AI / Tools",
-		Tags:     "Cursor,OpenAI,Proxy,LLM,API,SDK,Pollinations,ImageGen",
+		Tags:     "Cursor,OpenAI,Proxy,LLM,API,SDK,Pollinations,ImageGen,Navigation,kaka770",
 		IsPinned: false,
 		Content: `# anyrobert/cursor-api-proxy
 
@@ -509,7 +509,14 @@ spring:
 
 > **官方网站**：[pollinations.ai](https://pollinations.ai/)  
 > **GitHub 仓库**：[pollinations/pollinations](https://github.com/pollinations/pollinations)  
-> **核心定位**：开源全模态生成式 AI 聚合与 API 平台，支持**免 Key / 一行 URL 直接生成图片（Flux/SDXL）**及 **OpenAI 兼容的文本对话接口**。`,
+> **核心定位**：开源全模态生成式 AI 聚合与 API 平台，支持**免 Key / 一行 URL 直接生成图片（Flux/SDXL）**及 **OpenAI 兼容的文本对话接口**。
+
+---
+
+### 卡卡轻导航 (kaka770.cn)
+
+> **官方网站**：[kaka770.cn](https://kaka770.cn/)  
+> **核心定位**：极简聚合网址导航、在线实用工具箱与轻量娱乐平台。支持暗黑/壁纸沉浸模式、多分类网址索引与前端效率工具，**可作为自定义个人导航页与网址收录架构的参考范例**。`,
 	}
 
 	var existingCp model.Note
