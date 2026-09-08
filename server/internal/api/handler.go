@@ -1044,16 +1044,26 @@ func probeURLOnline(rawURL string) bool {
 			host = host + ":80"
 		}
 	}
-	if strings.HasPrefix(host, "localhost:") {
-		host = "127.0.0.1:" + strings.TrimPrefix(host, "localhost:")
+	// Try direct host first
+	if conn, err := net.DialTimeout("tcp", host, 200*time.Millisecond); err == nil {
+		_ = conn.Close()
+		return true
 	}
 
-	conn, err := net.DialTimeout("tcp", host, 250*time.Millisecond)
-	if err != nil {
-		return false
+	// If localhost, try both 127.0.0.1 and [::1]
+	if strings.HasPrefix(host, "localhost:") {
+		port := strings.TrimPrefix(host, "localhost:")
+		if conn, err := net.DialTimeout("tcp", "127.0.0.1:"+port, 150*time.Millisecond); err == nil {
+			_ = conn.Close()
+			return true
+		}
+		if conn, err := net.DialTimeout("tcp", "[::1]:"+port, 150*time.Millisecond); err == nil {
+			_ = conn.Close()
+			return true
+		}
 	}
-	_ = conn.Close()
-	return true
+
+	return false
 }
 
 // ==========================================
