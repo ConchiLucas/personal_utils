@@ -1596,6 +1596,12 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 			Content:   "/Users/conchi/workforce",
 			SortOrder: 5,
 		},
+		{
+			Section:   "document",
+			Title:     "WatchSieve 监控抓取工程目录",
+			Content:   "/Users/conchi/workforce/python_workforce/watch_sieve",
+			SortOrder: 6,
+		},
 
 		// 5. 常用脚本执行 (script - 一键直接运行)
 		{
