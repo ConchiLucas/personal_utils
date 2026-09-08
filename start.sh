@@ -133,10 +133,87 @@ start_frontend() {
   wait_for_url frontend "http://127.0.0.1:$FRONTEND_PORT/"
 }
 
-start_backend
-start_frontend
+stop_service() {
+  local label="$1"
+  if launchctl print "$LAUNCH_DOMAIN/$label" >/dev/null 2>&1; then
+    launchctl bootout "$LAUNCH_DOMAIN/$label" 2>/dev/null || true
+  fi
+}
 
-echo
-echo "前端：http://localhost:$FRONTEND_PORT/"
-echo "后端：http://localhost:$BACKEND_PORT/api/health"
-echo "日志：$RUN_DIR/backend.log 和 $RUN_DIR/frontend.log"
+stop_all() {
+  echo "[STOP] 正在停止 Personal Utils 服务..."
+  stop_service "com.personal-utils.backend"
+  stop_service "com.personal-utils.frontend"
+  echo "[OK] 服务已停止"
+}
+
+status_all() {
+  echo "=== Personal Utils 状态巡检 ==="
+  if is_listening "$BACKEND_PORT"; then
+    echo "后端端口 :$BACKEND_PORT [运行中] (PID: $(lsof -ti:$BACKEND_PORT | tr '\n' ' '))"
+    curl -s --max-time 1 "http://127.0.0.1:$BACKEND_PORT/api/health" || true
+    echo
+  else
+    echo "后端端口 :$BACKEND_PORT [未运行]"
+  fi
+
+  if is_listening "$FRONTEND_PORT"; then
+    echo "前端端口 :$FRONTEND_PORT [运行中] (PID: $(lsof -ti:$FRONTEND_PORT | tr '\n' ' '))"
+  else
+    echo "前端端口 :$FRONTEND_PORT [未运行]"
+  fi
+}
+
+restart_all() {
+  echo "[RESTART] 重新编译后端并重启服务..."
+  (cd "$PROJECT_DIR/server" && go build -o "$RUN_DIR/backend" ./cmd/server/main.go)
+  echo "[OK] 后端编译完成"
+
+  # Restart backend
+  if launchctl print "$LAUNCH_DOMAIN/com.personal-utils.backend" >/dev/null 2>&1; then
+    launchctl kickstart -k "$LAUNCH_DOMAIN/com.personal-utils.backend"
+  else
+    start_backend
+  fi
+  wait_for_url backend "http://127.0.0.1:$BACKEND_PORT/api/health"
+
+  # Restart frontend
+  if launchctl print "$LAUNCH_DOMAIN/com.personal-utils.frontend" >/dev/null 2>&1; then
+    launchctl kickstart -k "$LAUNCH_DOMAIN/com.personal-utils.frontend"
+  else
+    start_frontend
+  fi
+  wait_for_url frontend "http://127.0.0.1:$FRONTEND_PORT/"
+
+  echo
+  echo "✅ Personal Utils 重启成功！"
+  echo "前端：http://localhost:$FRONTEND_PORT/"
+  echo "后端：http://localhost:$BACKEND_PORT/api/health"
+  echo "日志：$RUN_DIR/backend.log 和 $RUN_DIR/frontend.log"
+}
+
+ACTION="${1:-start}"
+
+case "$ACTION" in
+  start)
+    start_backend
+    start_frontend
+    echo
+    echo "前端：http://localhost:$FRONTEND_PORT/"
+    echo "后端：http://localhost:$BACKEND_PORT/api/health"
+    echo "日志：$RUN_DIR/backend.log 和 $RUN_DIR/frontend.log"
+    ;;
+  restart)
+    restart_all
+    ;;
+  stop)
+    stop_all
+    ;;
+  status)
+    status_all
+    ;;
+  *)
+    echo "用法: $0 [start|restart|stop|status]" >&2
+    exit 1
+    ;;
+esac
