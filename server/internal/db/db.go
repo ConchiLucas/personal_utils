@@ -1458,6 +1458,7 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		{Section: "website", Title: "股票量化交易前端 (Stock Vue)", Content: "http://localhost:6021/", SortOrder: 18, WorkspaceSlug: "stock_workforce"},
 		{Section: "website", Title: "股票调度大盘 (Stock Schedule Web)", Content: "http://localhost:6022/", SortOrder: 19, WorkspaceSlug: "stock_workforce"},
 		{Section: "website", Title: "共享配置中心 (Config Center Web)", Content: "http://127.0.0.1:18427/", SortOrder: 20, WorkspaceSlug: "shared-config-center"},
+		{Section: "website", Title: "WatchSieve 网站抓取与监控平台", Content: "http://localhost:8000/", SortOrder: 21, WorkspaceSlug: "python_workforce"},
 
 		// 2. 常用账户密码 (account)
 		{
