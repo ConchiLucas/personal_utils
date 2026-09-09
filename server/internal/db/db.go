@@ -555,7 +555,60 @@ spring:
 		gdb.Save(&existingContracts)
 	}
 
-	log.Printf("[DB] Synchronized master workforce, middleware, cursor-api-proxy, and contracts notes")
+	grokBotNote := model.Note{
+		Title:    "Cursor 接入 Grok Bot 极简配置与维护教程",
+		Slug:     "cursor-grok-bot-tutorial",
+		Category: "AI / Tools",
+		Tags:     "Cursor,Grok,Bot,教程,配置,维护,v135",
+		IsPinned: false,
+		Content: `# Cursor 接入 Grok Bot 极简配置与维护教程
+
+> **版本信息**：
+> - **Cursor 版本**：` + "`3.19.13`" + `
+> - **注入脚本版本**：` + "`v135`" + `
+
+🟢 **3 大步骤概括：**
+
+1. **准备**：下载登录客户端 + 获取注入脚本（v135）
+2. **Bot 端**：新建 Bot 并发送指令，等它重启成功
+3. **本地端**：运行脚本按 ` + "`1`" + ` 完成注入
+
+---
+
+📝 **拆解后的 6 个具体操作：**
+
+- **第 1 步**：打开 [x.ai/bot](https://x.ai/bot) 下载客户端，登录**有额度**的账号
+- **第 2 步**：在客户端里**新建一个 Bot**
+- **第 3 步**：复制并发送以下指令给 Bot：
+  ` + "```text\n  备份 /home/box/sand-host/host-main.cjs，在现有受鉴权 gateway 的 handleRequest 中加入 POST 路由 /sand-stream-relay/aiserver.v1.InferenceService/Stream。复用现有 isAuthorized 和 gateway 鉴权；原样转发 Connect 请求流到后端 InferenceService.Stream，移除客户端 Authorization，使用 Box 内现有 Grok Bot token provider 写入 Bearer；保留响应流、背压和中止处理。完成后重启 sand host，禁止输出任何 token。\n  ```" + `
+- **第 4 步**：发消息问 Bot 一句 ` + "`重启了吗`" + `，确认回复中提到**旧进程已没、新进程拉起**
+- **第 5 步**：电脑获取脚本并运行（Cursor 版本请确认对应 ` + "`3.19.13`" + `）：
+  - **脚本静态直链**：[https://getdoubao.com/sand_stream_installer_v135.py](https://getdoubao.com/sand_stream_installer_v135.py)
+  - **终端一键下载并运行**：
+    ` + "```powershell\n    curl.exe -fsSL -o sand_stream_installer_v135.py https://getdoubao.com/sand_stream_installer_v135.py\n    python sand_stream_installer_v135.py\n    ```" + `
+- **第 6 步**：输入 **` + "`1`" + `** 回车，完成注入即可正常使用
+
+---
+
+🔄 **日常维护与异常处理：**
+
+- **换账号（Bot 和 Cursor 账号都换了）**：重新运行脚本，输入 **` + "`2`" + `** 刷新本地 box-relay
+- **Cursor 断流**：回到 Bot 窗口`,
+	}
+
+	var existingGrok model.Note
+	if err := gdb.Where("slug = ?", grokBotNote.Slug).First(&existingGrok).Error; err != nil {
+		gdb.Create(&grokBotNote)
+	} else {
+		existingGrok.Title = grokBotNote.Title
+		existingGrok.Content = grokBotNote.Content
+		existingGrok.Category = grokBotNote.Category
+		existingGrok.Tags = grokBotNote.Tags
+		existingGrok.IsPinned = false
+		gdb.Save(&existingGrok)
+	}
+
+	log.Printf("[DB] Synchronized master workforce, middleware, cursor-api-proxy, contracts, and grok-bot notes")
 }
 
 func seedDefaultScripts(gdb *gorm.DB) {
