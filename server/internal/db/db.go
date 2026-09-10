@@ -1519,6 +1519,13 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		// 2. 常用账户密码 (account)
 		{
 			Section:   "account",
+			Title:     "攀枝花综合信息服务平台 OP运营后台",
+			Content:   "http://192.168.0.222:28080/op/login",
+			Extra:     `{"username":"saas","password":"P&^#@#ions2026","host":"192.168.0.222:28080","url":"http://192.168.0.222:28080/op/login"}`,
+			SortOrder: 1,
+		},
+		{
+			Section:   "account",
 			Title:     "自己阿里云oss",
 			Content:   "Aliyun OSS",
 			Extra:     `{"username":"LTAI********************","password":"oTz6****************************","host":"Aliyun OSS","user_label":"AccessKey ID","pwd_label":"AccessKey"}`,
