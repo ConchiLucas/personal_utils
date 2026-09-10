@@ -608,7 +608,46 @@ spring:
 		gdb.Save(&existingGrok)
 	}
 
-	log.Printf("[DB] Synchronized master workforce, middleware, cursor-api-proxy, contracts, and grok-bot notes")
+	messagePushNote := model.Note{
+		Title:    "消息推送",
+		Slug:     "message-push-solutions",
+		Category: "DevOps",
+		Tags:     "消息推送,企业微信,通知提醒,Webhook,DevOps",
+		IsPinned: false,
+		Content: `# 消息推送
+
+### 方案 1：企业微信应用推送（给自己/团队发通知，最像好友发消息）⭐⭐⭐⭐⭐
+
+这是目前开发者圈子里公认提醒最强、体验最好的方案：
+
+#### 📱 微信里的表现效果：
+* **未读提示**：直接显示在微信主界面的一级聊天列表中，右上角带红色未读数字角标（①、②、③...）。
+* **系统强提醒**：手机会响铃/震动，支持系统锁屏弹窗、顶部横幅提醒，体验跟好友发微信没有任何区别。
+* **支持置顶**：你可以直接把它“置顶聊天”，永远在微信最顶部。
+
+#### ⚙️ 实现原理：
+1. **个人注册**：个人用身份证免费注册一个“企业微信”（无需营业执照，1分钟搞定）；
+2. **自建应用**：在后台创建一个自建应用（如“系统监控”、“新订单通知”）；
+3. **微信关注**：在微信里关注你的“企业微信插件”（相当于一个通讯录联系人）；
+4. **接口推送**：你的后台系统调用 Webhook/API 发送消息，消息就会直接推到普通微信上。
+
+#### 💰 费用与门槛：
+* **完全免费**，个人即可开通。`,
+	}
+
+	var existingPush model.Note
+	if err := gdb.Where("slug = ?", messagePushNote.Slug).First(&existingPush).Error; err != nil {
+		gdb.Create(&messagePushNote)
+	} else {
+		existingPush.Title = messagePushNote.Title
+		existingPush.Content = messagePushNote.Content
+		existingPush.Category = messagePushNote.Category
+		existingPush.Tags = messagePushNote.Tags
+		existingPush.IsPinned = false
+		gdb.Save(&existingPush)
+	}
+
+	log.Printf("[DB] Synchronized master workforce, middleware, cursor-api-proxy, contracts, grok-bot, and message-push notes")
 }
 
 func seedDefaultScripts(gdb *gorm.DB) {
