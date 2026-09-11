@@ -1542,7 +1542,7 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		{Section: "website", Title: "素材后台", Content: "http://localhost:19091/math", SortOrder: 10, WorkspaceSlug: "kid-workbench"},
 		{Section: "website", Title: "进度后台", Content: "http://localhost:19081/", SortOrder: 11, WorkspaceSlug: "kid-workbench"},
 		{Section: "website", Title: "任务后台", Content: "http://localhost:19201/", SortOrder: 12, WorkspaceSlug: "kid-workbench"},
-		{Section: "website", Title: "孩子知识库", Content: "http://localhost:19212/", SortOrder: 13, WorkspaceSlug: "kid-workbench"},
+		{Section: "website", Title: "孩子知识库", Content: "http://localhost:19211/", SortOrder: 13, WorkspaceSlug: "kid-workbench"},
 		{Section: "website", Title: "Agent Context Router 控制台", Content: "http://127.0.0.1:49175/", SortOrder: 14, WorkspaceSlug: "python_workforce"},
 		{Section: "website", Title: "English Material 英语素材管理平台", Content: "http://127.0.0.1:19638/", SortOrder: 15, WorkspaceSlug: "python_workforce"},
 		{Section: "website", Title: "统一收件箱监控大盘 (Watch Inbox)", Content: "http://127.0.0.1:18501/", SortOrder: 16, WorkspaceSlug: "python_workforce"},
