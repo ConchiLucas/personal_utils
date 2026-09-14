@@ -647,7 +647,55 @@ spring:
 		gdb.Save(&existingPush)
 	}
 
-	log.Printf("[DB] Synchronized master workforce, middleware, cursor-api-proxy, contracts, grok-bot, and message-push notes")
+	googlePlayNote := model.Note{
+		Title:    "Google Play 美区切换与绑卡支付指南",
+		Slug:     "google-play-us-region-guide",
+		Category: "生活 / 支付",
+		Tags:     "GooglePlay,美区,GooglePayments,招商银行,Visa,运通,境外支付,绑卡",
+		IsPinned: false,
+		Content: `# Google Play 美区切换与绑卡支付指南
+
+最方便、实测成功率最高的美区 Google Play 切换与国内双币信用卡绑定方案。
+
+---
+
+### 1. 切换 Google Play 到美区（需挂美区代理）
+* **操作路径**：
+  ` + "`Google Play` → `Settings` → `General` → `Account and device preferences` → `Country and profiles`" + ` → 选择 ` + "`United States`" + `。
+* **常见卡点与排查**：
+  * **加入了家庭组 (Family)**：如果切换不成功，大概率是当前账号加入了解锁区域受限的家庭组，**退出 Family 即可**。
+  * **已有余额未清零**：账号内原有的旧区礼品卡/账号余额必须消耗光，否则 Google 不允许跨区切换。
+
+---
+
+### 2. 创建美国 Google Payments 付款资料
+* **操作路径**：
+  浏览器打开 [payments.google.com](https://payments.google.com/) → ` + "`Settings` → `Payments profile` → `Country/Region` → `Create new profile`" + ` → 选择 ` + "`United States`" + `。
+* **地址与电话技巧**：
+  * 实际测试建议直接找一个真实美国企业地址（例如 **AWS** 或 **Microsoft** 在免税州如俄勒冈 Oregon、特拉华 Delaware 或华盛顿州的公司地址与电话）填入即可。
+
+---
+
+### 3. Google Play Store 绑定国内双币信用卡
+* **实测可用卡种**：
+  * **招商银行 Visa 双币信用卡**
+  * **招商银行运通卡 (American Express)**
+* 直接在 Google Play 添加付款方式中绑定上述卡片即可正常消费及订阅海外应用。`,
+	}
+
+	var existingGooglePlay model.Note
+	if err := gdb.Where("slug = ?", googlePlayNote.Slug).First(&existingGooglePlay).Error; err != nil {
+		gdb.Create(&googlePlayNote)
+	} else {
+		existingGooglePlay.Title = googlePlayNote.Title
+		existingGooglePlay.Content = googlePlayNote.Content
+		existingGooglePlay.Category = googlePlayNote.Category
+		existingGooglePlay.Tags = googlePlayNote.Tags
+		existingGooglePlay.IsPinned = false
+		gdb.Save(&existingGooglePlay)
+	}
+
+	log.Printf("[DB] Synchronized master workforce, middleware, cursor-api-proxy, contracts, grok-bot, message-push, and google-play notes")
 }
 
 func seedDefaultScripts(gdb *gorm.DB) {
