@@ -1668,6 +1668,13 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 			Extra:     `{"username":"root","password":"conchi123456","host":"127.0.0.1:3306"}`,
 			SortOrder: 6,
 		},
+		{
+			Section:   "account",
+			Title:     "GitLab 私有代码托管平台",
+			Content:   "http://120.55.164.192:9433/",
+			Extra:     `{"username":"glab-mr","password":"61YT3_J1G-g-iQifns-e","host":"120.55.164.192:9433","url":"http://120.55.164.192:9433/"}`,
+			SortOrder: 7,
+		},
 
 		// 3. 常用执行命令 (command)
 		{
