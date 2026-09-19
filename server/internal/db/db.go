@@ -1614,7 +1614,7 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		{Section: "website", Title: "english-word 运营后台", Content: "http://127.0.0.1:6016/", SortOrder: 19, WorkspaceSlug: "rob_english_word"},
 		{Section: "website", Title: "股票量化交易前端 (Stock Vue)", Content: "http://localhost:6021/", SortOrder: 20, WorkspaceSlug: "stock_workforce"},
 		{Section: "website", Title: "股票调度大盘 (Stock Schedule Web)", Content: "http://localhost:6022/", SortOrder: 21, WorkspaceSlug: "stock_workforce"},
-		{Section: "website", Title: "共享配置中心 (Config Center Web)", Content: "http://127.0.0.1:18427/", SortOrder: 22, WorkspaceSlug: "shared-config-center"},
+		{Section: "website", Title: "共享配置中心 (Config Center Web)", Content: "http://127.0.0.1:18527/", SortOrder: 22, WorkspaceSlug: "shared-config-center"},
 		{Section: "website", Title: "WatchSieve 网站抓取与监控平台", Content: "http://localhost:8000/", SortOrder: 23, WorkspaceSlug: "python_workforce"},
 		{Section: "website", Title: "SnailJob 任务调度中心", Content: "http://localhost:18080/snail-job/#/login", SortOrder: 24, WorkspaceSlug: ""},
 		{Section: "website", Title: "Uptime Kuma 服务监控大盘", Content: "http://127.0.0.1:19301/", SortOrder: 25, WorkspaceSlug: ""},
