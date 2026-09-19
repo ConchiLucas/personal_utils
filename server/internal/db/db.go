@@ -1618,6 +1618,7 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		{Section: "website", Title: "WatchSieve 网站抓取与监控平台", Content: "http://localhost:8000/", SortOrder: 23, WorkspaceSlug: "python_workforce"},
 		{Section: "website", Title: "SnailJob 任务调度中心", Content: "http://localhost:18080/snail-job/#/login", SortOrder: 24, WorkspaceSlug: ""},
 		{Section: "website", Title: "Uptime Kuma 服务监控大盘", Content: "http://127.0.0.1:19301/", SortOrder: 25, WorkspaceSlug: ""},
+		{Section: "website", Title: "Grok2API Web 管理后台", Content: "http://127.0.0.1:37821/", SortOrder: 26, WorkspaceSlug: ""},
 
 		// 2. 常用账户密码 (account)
 		{
