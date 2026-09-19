@@ -1691,6 +1691,13 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 			Extra:     `{"username":"admin@sub2api.local","password":"Admin123456!","host":"localhost:8090","url":"http://localhost:8090/login"}`,
 			SortOrder: 9,
 		},
+		{
+			Section:   "account",
+			Title:     "Sub2API 聚合网关 (个人账号)",
+			Content:   "http://localhost:8090/login",
+			Extra:     `{"username":"conchi19930702@gmail.com","password":"Abc.1234","host":"localhost:8090","url":"http://localhost:8090/login"}`,
+			SortOrder: 10,
+		},
 
 		// 3. 常用执行命令 (command)
 		{
