@@ -1191,7 +1191,8 @@ mkdir -p "$EXPORT_ROOT"
 DUMP_FILE="${EXPORT_ROOT}/${SOURCE_DB}_${RUN_ID}.dump"
 
 echo "📦 [1/3] 正在导出 PostgreSQL 数据库 [${SOURCE_DB}]..."
-PGPASSWORD="${SOURCE_PASSWORD}" pg_dump -h "${SOURCE_HOST}" -p "${SOURCE_PORT}" -U "${SOURCE_USER}" -Fc "${SOURCE_DB}" > "${DUMP_FILE}"
+/usr/local/bin/docker exec -e PGPASSWORD="${SOURCE_PASSWORD}" postgres16 \
+  pg_dump -h "${SOURCE_HOST}" -p "${SOURCE_PORT}" -U "${SOURCE_USER}" -Fc "${SOURCE_DB}" > "${DUMP_FILE}"
 echo "✅ 导出成功: ${DUMP_FILE}"
 
 if [ "$TARGET_SERVER_IP" != "127.0.0.1" ] && [ "$TARGET_SERVER_IP" != "localhost" ]; then
@@ -1201,11 +1202,15 @@ if [ "$TARGET_SERVER_IP" != "127.0.0.1" ] && [ "$TARGET_SERVER_IP" != "localhost
   
   echo "📥 [2/3] 正在目标服务器导入 PostgreSQL..."
   ssh -p "${TARGET_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${TARGET_SERVER_USER}@${TARGET_SERVER_IP}" "
-    PGPASSWORD='${TARGET_PG_PASSWORD}' pg_restore -h '${TARGET_PG_HOST}' -p '${TARGET_PG_PORT}' -U '${TARGET_PG_USER}' -d '${TARGET_DB}' --clean --if-exists --no-owner '${REMOTE_DIR}/$(basename "$DUMP_FILE")' || true
+    docker exec -i -e PGPASSWORD='${TARGET_PG_PASSWORD}' postgres16 \
+      pg_restore -h '${TARGET_PG_HOST}' -p '${TARGET_PG_PORT}' -U '${TARGET_PG_USER}' -d '${TARGET_DB}' --clean --if-exists --no-owner \
+      < '${REMOTE_DIR}/$(basename "$DUMP_FILE")'
   "
 else
   echo "📥 [2/3] 正在本地导入 PostgreSQL..."
-  PGPASSWORD="${TARGET_PG_PASSWORD}" pg_restore -h "${TARGET_PG_HOST}" -p "${TARGET_PG_PORT}" -U "${TARGET_PG_USER}" -d "${TARGET_DB}" --clean --if-exists --no-owner "${DUMP_FILE}" || true
+  /usr/local/bin/docker exec -i -e PGPASSWORD="${TARGET_PG_PASSWORD}" postgres16 \
+    pg_restore -h "${TARGET_PG_HOST}" -p "${TARGET_PG_PORT}" -U "${TARGET_PG_USER}" -d "${TARGET_DB}" --clean --if-exists --no-owner \
+    < "${DUMP_FILE}"
 fi
 
 echo "✅ PostgreSQL 迁移完成！"`,
@@ -1255,7 +1260,8 @@ mkdir -p "$EXPORT_ROOT"
 DUMP_FILE="${EXPORT_ROOT}/${SOURCE_DB}_${TABLE_NAME}_${RUN_ID}.dump"
 
 echo "📦 [1/3] 正在导出单表 [${TABLE_NAME}]..."
-PGPASSWORD="${SOURCE_PASSWORD}" pg_dump -h "${SOURCE_HOST}" -p "${SOURCE_PORT}" -U "${SOURCE_USER}" -Fc --no-owner -t "${TABLE_NAME}" "${SOURCE_DB}" > "${DUMP_FILE}"
+/usr/local/bin/docker exec -e PGPASSWORD="${SOURCE_PASSWORD}" postgres16 \
+  pg_dump -h "${SOURCE_HOST}" -p "${SOURCE_PORT}" -U "${SOURCE_USER}" -Fc --no-owner -t "${TABLE_NAME}" "${SOURCE_DB}" > "${DUMP_FILE}"
 
 if [ "$TARGET_SERVER_IP" != "127.0.0.1" ] && [ "$TARGET_SERVER_IP" != "localhost" ]; then
   REMOTE_DIR="/tmp/db_restore"
@@ -1264,11 +1270,15 @@ if [ "$TARGET_SERVER_IP" != "127.0.0.1" ] && [ "$TARGET_SERVER_IP" != "localhost
   
   echo "📥 [2/3] 正在目标服务器导入单表..."
   ssh -p "${TARGET_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${TARGET_SERVER_USER}@${TARGET_SERVER_IP}" "
-    PGPASSWORD='${TARGET_PG_PASSWORD}' pg_restore -h '${TARGET_PG_HOST}' -p '${TARGET_PG_PORT}' -U '${TARGET_PG_USER}' -d '${TARGET_DB}' --clean --if-exists --no-owner '${REMOTE_DIR}/$(basename "$DUMP_FILE")' || true
+    docker exec -i -e PGPASSWORD='${TARGET_PG_PASSWORD}' postgres16 \
+      pg_restore -h '${TARGET_PG_HOST}' -p '${TARGET_PG_PORT}' -U '${TARGET_PG_USER}' -d '${TARGET_DB}' --clean --if-exists --no-owner \
+      < '${REMOTE_DIR}/$(basename "$DUMP_FILE")'
   "
 else
   echo "📥 [2/3] 正在本地导入单表..."
-  PGPASSWORD="${TARGET_PG_PASSWORD}" pg_restore -h "${TARGET_PG_HOST}" -p "${TARGET_PG_PORT}" -U "${TARGET_PG_USER}" -d "${TARGET_DB}" --clean --if-exists --no-owner "${DUMP_FILE}" || true
+  /usr/local/bin/docker exec -i -e PGPASSWORD="${TARGET_PG_PASSWORD}" postgres16 \
+    pg_restore -h "${TARGET_PG_HOST}" -p "${TARGET_PG_PORT}" -U "${TARGET_PG_USER}" -d "${TARGET_DB}" --clean --if-exists --no-owner \
+    < "${DUMP_FILE}"
 fi
 
 echo "✅ PostgreSQL 单表 ${TABLE_NAME} 同步完成！"`,
@@ -1317,14 +1327,17 @@ LOCAL_FILE="${LOCAL_DIR}/${REMOTE_DB}_${RUN_ID}.dump"
 
 echo "📦 [1/3] 正在远程导出 PostgreSQL 数据库 [${REMOTE_DB}]..."
 ssh -p "${REMOTE_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${REMOTE_SERVER_USER}@${REMOTE_SERVER_IP}" "
-  PGPASSWORD='${REMOTE_PG_PASSWORD}' pg_dump -h '${REMOTE_PG_HOST}' -p '${REMOTE_PG_PORT}' -U '${REMOTE_PG_USER}' -Fc '${REMOTE_DB}' > '${REMOTE_FILE}'
+  docker exec -e PGPASSWORD='${REMOTE_PG_PASSWORD}' postgres16 \
+    pg_dump -h '${REMOTE_PG_HOST}' -p '${REMOTE_PG_PORT}' -U '${REMOTE_PG_USER}' -Fc '${REMOTE_DB}' > '${REMOTE_FILE}'
 "
 
 echo "📥 [2/3] 正在拉取导出文件到本地..."
 scp -P "${REMOTE_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${REMOTE_SERVER_USER}@${REMOTE_SERVER_IP}:${REMOTE_FILE}" "${LOCAL_FILE}"
 
 echo "💾 [3/3] 正在导入到本地 PostgreSQL 数据库 [${LOCAL_DB}]..."
-PGPASSWORD="${LOCAL_PG_PASSWORD}" pg_restore -h "${LOCAL_PG_HOST}" -p "${LOCAL_PG_PORT}" -U "${LOCAL_PG_USER}" -d "${LOCAL_DB}" --clean --if-exists --no-owner "${LOCAL_FILE}" || true
+/usr/local/bin/docker exec -i -e PGPASSWORD="${LOCAL_PG_PASSWORD}" postgres16 \
+  pg_restore -h "${LOCAL_PG_HOST}" -p "${LOCAL_PG_PORT}" -U "${LOCAL_PG_USER}" -d "${LOCAL_DB}" --clean --if-exists --no-owner \
+  < "${LOCAL_FILE}"
 
 echo "✅ PostgreSQL 反向全量同步完成！"`,
 			TimeoutSec: 300,
@@ -1374,14 +1387,17 @@ LOCAL_FILE="${LOCAL_DIR}/${REMOTE_DB}_${TABLE_NAME}_${RUN_ID}.dump"
 
 echo "📦 [1/3] 正在远程导出 PostgreSQL 单表 [${REMOTE_DB}.${TABLE_NAME}]..."
 ssh -p "${REMOTE_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${REMOTE_SERVER_USER}@${REMOTE_SERVER_IP}" "
-  PGPASSWORD='${REMOTE_PG_PASSWORD}' pg_dump -h '${REMOTE_PG_HOST}' -p '${REMOTE_PG_PORT}' -U '${REMOTE_PG_USER}' -Fc --no-owner -t '${TABLE_NAME}' '${REMOTE_DB}' > '${REMOTE_FILE}'
+  docker exec -e PGPASSWORD='${REMOTE_PG_PASSWORD}' postgres16 \
+    pg_dump -h '${REMOTE_PG_HOST}' -p '${REMOTE_PG_PORT}' -U '${REMOTE_PG_USER}' -Fc --no-owner -t '${TABLE_NAME}' '${REMOTE_DB}' > '${REMOTE_FILE}'
 "
 
 echo "📥 [2/3] 正在拉取导出文件到本地..."
 scp -P "${REMOTE_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${REMOTE_SERVER_USER}@${REMOTE_SERVER_IP}:${REMOTE_FILE}" "${LOCAL_FILE}"
 
 echo "💾 [3/3] 正在导入到本地 PostgreSQL 单表 [${LOCAL_DB}.${TABLE_NAME}]..."
-PGPASSWORD="${LOCAL_PG_PASSWORD}" pg_restore -h "${LOCAL_PG_HOST}" -p "${LOCAL_PG_PORT}" -U "${LOCAL_PG_USER}" -d "${LOCAL_DB}" --clean --if-exists --no-owner "${LOCAL_FILE}" || true
+/usr/local/bin/docker exec -i -e PGPASSWORD="${LOCAL_PG_PASSWORD}" postgres16 \
+  pg_restore -h "${LOCAL_PG_HOST}" -p "${LOCAL_PG_PORT}" -U "${LOCAL_PG_USER}" -d "${LOCAL_DB}" --clean --if-exists --no-owner \
+  < "${LOCAL_FILE}"
 
 echo "✅ PostgreSQL 反向单表同步完成！"`,
 			TimeoutSec: 180,
@@ -1585,6 +1601,9 @@ echo "✅ ClickHouse 单表 [${TABLE_NAME}] 导出到 Mac Mini 完成！"`,
 }
 
 func seedDefaultDashboardItems(gdb *gorm.DB) {
+	// Clean up removed website items
+	gdb.Where("section = ? AND title IN (?)", "website", []string{"Personal Utils 本地服务", "GitHub 代码协作平台", "GitLab 代码管理平台"}).Delete(&model.DashboardItem{})
+
 	var count int64
 	gdb.Model(&model.DashboardItem{}).Count(&count)
 	if count > 0 {
@@ -2348,4 +2367,3 @@ func seedDefaultProjectDirectories(gdb *gorm.DB) {
 
 	log.Printf("[DB] Seeded %d default project directories with child services", len(dirs))
 }
-
