@@ -1153,7 +1153,7 @@ echo "✅ 反向单表同步完成！"`,
 			CategoryID:   dbCat.ID,
 			CategorySlug: dbCat.Slug,
 			Name:         "PostgreSQL 数据库导出到目标服务器",
-			Description:  "本地使用 pg_dump 导出指定 PostgreSQL 数据库，通过 Tailscale/SSH 传输文件至目标服务器并导入",
+			Description:  "本地通过 Docker 导出指定 PostgreSQL 数据库，经 FRP SSH 与 Tailscale 传输到家庭 mac mini 的 PostgreSQL 容器并恢复",
 			ScriptType:   "bash",
 			ExecMode:     "dynamic",
 			ParamsSchema: `[
@@ -1177,8 +1177,33 @@ SOURCE_USER="conchi"
 SOURCE_PASSWORD="conchi123456"
 
 TARGET_SERVER_IP="1.15.62.252"
-TARGET_SERVER_PORT="22"
-TARGET_SERVER_USER="root"
+TARGET_SERVER_PORT="7501"
+TARGET_SERVER_USER="conchi"
+TARGET_TAILSCALE_IP="100.120.144.76"
+TARGET_TAILSCALE_PORT="22"
+
+# 与 vibecoding-utils 共用已经维护的家庭服务器凭据，避免在本项目源码中重复保存密码。
+TARGET_SERVER_PASSWORD="$(/usr/local/bin/docker exec postgres16 psql -U conchi -d easy_deploy -Atqc \
+  "SELECT elem->>'value' FROM tb_script_resource_config c CROSS JOIN LATERAL jsonb_array_elements(c.rows::jsonb) elem WHERE c.deleted_at IS NULL AND c.config_name LIKE 'conchimac-mini / FRP SSH %' AND elem->>'name'='PASSWORD' LIMIT 1")"
+if [ -z "${TARGET_SERVER_PASSWORD}" ]; then
+  echo "❌ 未在 easy_deploy 中找到 conchimac-mini 的服务器密码配置" >&2
+  exit 1
+fi
+
+ASKPASS_SCRIPT="$(mktemp /tmp/personal-utils-askpass.XXXXXX)"
+cleanup_askpass() {
+  rm -f "${ASKPASS_SCRIPT}"
+}
+trap cleanup_askpass EXIT
+cat > "${ASKPASS_SCRIPT}" <<'ASKPASS'
+#!/bin/sh
+printf '%s\n' "$TARGET_SERVER_PASSWORD"
+ASKPASS
+chmod 700 "${ASKPASS_SCRIPT}"
+export TARGET_SERVER_PASSWORD
+export SSH_ASKPASS="${ASKPASS_SCRIPT}"
+export SSH_ASKPASS_REQUIRE="force"
+export DISPLAY=":0"
 
 TARGET_PG_HOST="127.0.0.1"
 TARGET_PG_PORT="5432"
@@ -1197,15 +1222,20 @@ echo "✅ 导出成功: ${DUMP_FILE}"
 
 if [ "$TARGET_SERVER_IP" != "127.0.0.1" ] && [ "$TARGET_SERVER_IP" != "localhost" ]; then
   REMOTE_DIR="/tmp/db_restore"
-  ssh -p "${TARGET_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${TARGET_SERVER_USER}@${TARGET_SERVER_IP}" "mkdir -p ${REMOTE_DIR}"
-  scp -P "${TARGET_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${DUMP_FILE}" "${TARGET_SERVER_USER}@${TARGET_SERVER_IP}:${REMOTE_DIR}/"
+  ssh -p "${TARGET_SERVER_PORT}" -o StrictHostKeyChecking=accept-new \
+    "${TARGET_SERVER_USER}@${TARGET_SERVER_IP}" "mkdir -p '${REMOTE_DIR}'" < /dev/null
+
+  echo "📤 [2/3] 正在通过 Tailscale 传输导出文件..."
+  scp -P "${TARGET_TAILSCALE_PORT}" -o StrictHostKeyChecking=accept-new \
+    "${DUMP_FILE}" "${TARGET_SERVER_USER}@${TARGET_TAILSCALE_IP}:${REMOTE_DIR}/" < /dev/null
   
-  echo "📥 [2/3] 正在目标服务器导入 PostgreSQL..."
+  echo "📥 [3/3] 正在家庭 mac mini 的 postgres16 容器中恢复 PostgreSQL..."
   ssh -p "${TARGET_SERVER_PORT}" -o StrictHostKeyChecking=accept-new "${TARGET_SERVER_USER}@${TARGET_SERVER_IP}" "
-    docker exec -i -e PGPASSWORD='${TARGET_PG_PASSWORD}' postgres16 \
+    set -euo pipefail
+    /usr/local/bin/docker exec -i -e PGPASSWORD='${TARGET_PG_PASSWORD}' postgres16 \
       pg_restore -h '${TARGET_PG_HOST}' -p '${TARGET_PG_PORT}' -U '${TARGET_PG_USER}' -d '${TARGET_DB}' --clean --if-exists --no-owner \
       < '${REMOTE_DIR}/$(basename "$DUMP_FILE")'
-  "
+  " < /dev/null
 else
   echo "📥 [2/3] 正在本地导入 PostgreSQL..."
   /usr/local/bin/docker exec -i -e PGPASSWORD="${TARGET_PG_PASSWORD}" postgres16 \
