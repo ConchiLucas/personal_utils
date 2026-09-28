@@ -378,7 +378,7 @@ func isLikelyWebPort(publicPort, privatePort uint16, containerName string) bool 
 		3000: true, 5173: true, 5999: true, 6004: true, 6014: true,
 		6015: true, 6016: true, 6021: true, 6022: true, 7505: true,
 		18427: true, 18501: true, 19081: true, 19082: true, 19091: true,
-		19638: true, 18046: true, 19101: true, 49175: true,
+		19638: true, 18046: true, 19101: true, 49175: true, 47863: true,
 	}
 	if webPorts[publicPort] || webPorts[privatePort] {
 		return true

@@ -257,13 +257,13 @@ func seedNotes(gdb *gorm.DB) {
 
 | 工程名称 | 绝对物理根目录 (Absolute Directory) | 入口 / 端口 | 技术栈 & 核心定位 |
 | :--- | :--- | :--- | :--- |
-| **personal_utils** | ` + "`/Users/conchi/workforce/go_workforce/personal_utils`" + ` | API ` + "`:39888`" + `, Web ` + "`:39889`" + ` | Go + React 个人开发运维工作台与容器大盘 |
+| **personal_utils** | ` + "`/Users/conchi/workforce/my_github_workforce/personal_utils`" + ` | API ` + "`:39888`" + `, Web ` + "`:39889`" + ` | Go + React 个人开发运维工作台与容器大盘 |
 | **ai-file-navigation** | ` + "`/Users/conchi/workforce/go_workforce/ai-file-navigation`" + ` | API ` + "`:10001`" + `, Web ` + "`:6001`" + ` | AI 文件语义与智能检索导航服务 |
 | **ai_share_config** | ` + "`/Users/conchi/workforce/go_workforce/ai_share_config`" + ` | API ` + "`:18783`" + `, Web ` + "`:18427`" + ` | 统一共享配置中心 (Shared Config Center) |
 | **task_board** | ` + "`/Users/conchi/workforce/go_workforce/task_board`" + ` | Web ` + "`:18338`" + ` | 敏捷研发协作与任务看板 |
-| **ai-datahub** | ` + "`/Users/conchi/workforce/go_workforce/ai-datahub`" + ` | — | AI 语料与向量知识库数据中台 |
+| **ai-datahub** | ` + "`/Users/conchi/workforce/my_github_workforce/ai-datahub`" + ` | — | AI 语料与向量知识库数据中台 |
 | **go-react-template** | ` + "`/Users/conchi/workforce/go_workforce/go-react-template`" + ` | — | Go + React 全栈开发标准底座模板 |
-| **vibecoding-utils** | ` + "`/Users/conchi/workforce/go_workforce/vibecoding-utils`" + ` | — | 极速部署与研发运维辅助工具集 |
+| **vibecoding-utils** | ` + "`/Users/conchi/workforce/my_github_workforce/vibecoding-utils`" + ` | — | 极速部署与研发运维辅助工具集 |
 
 ---
 
@@ -271,7 +271,7 @@ func seedNotes(gdb *gorm.DB) {
 
 | 工程名称 | 绝对物理根目录 (Absolute Directory) | 服务端口 | 技术栈 & 核心定位 |
 | :--- | :--- | :--- | :--- |
-| **agent-context-router** | ` + "`/Users/conchi/workforce/python_workforce/agent-context-router`" + ` | FastAPI ` + "`:49173`" + `, Vue ` + "`:49175`" + ` | 智能体动态上下文路由网关 |
+| **agent-context-router** | ` + "`/Users/conchi/workforce/my_github_workforce/agent-context-router`" + ` | FastAPI ` + "`:49173`" + `, Vue ` + "`:49175`" + ` | 智能体动态上下文路由网关 |
 | **english_material** | ` + "`/Users/conchi/workforce/python_workforce/english_material`" + ` | ` + "`:18744`" + `, ` + "`:19638`" + ` | 英语语料清洗、抽取与特征管道 |
 | **ai-task-center** | ` + "`/Users/conchi/workforce/python_workforce/ai-task-center`" + ` | — | AI 异步长周期推理与批处理调度中心 |
 | **python_craw** | ` + "`/Users/conchi/workforce/python_workforce/python_craw`" + ` | — | 多源数据采集与网页爬虫流水线 |
@@ -772,12 +772,12 @@ func seedDefaultScripts(gdb *gorm.DB) {
 			Content: `#!/bin/zsh
 set -e
 echo "🚀 正在启动 Agent Context Router 原生服务栈 (Backend, Frontend, Host Runner)..."
-cd /Users/conchi/workforce/python_workforce/agent-context-router
+cd /Users/conchi/workforce/my_github_workforce/agent-context-router
 /bin/zsh ./scripts/start-native-stack.sh
 echo "✅ Agent Context Router 原生服务栈已启动就绪！"
 echo "前端控制台: http://127.0.0.1:49175"
 echo "后端API/MCP: http://127.0.0.1:49173"`,
-			WorkingDir:   "/Users/conchi/workforce/python_workforce/agent-context-router",
+			WorkingDir:   "/Users/conchi/workforce/my_github_workforce/agent-context-router",
 			TimeoutSec:   120,
 		},
 		{
@@ -790,10 +790,10 @@ echo "后端API/MCP: http://127.0.0.1:49173"`,
 			Content: `#!/bin/zsh
 set -e
 echo "🛑 正在停止 Agent Context Router 原生服务栈..."
-cd /Users/conchi/workforce/python_workforce/agent-context-router
+cd /Users/conchi/workforce/my_github_workforce/agent-context-router
 /bin/zsh ./scripts/stop-native-stack.sh
 echo "✅ Agent Context Router 所有后台进程已安全停止！"`,
-			WorkingDir:   "/Users/conchi/workforce/python_workforce/agent-context-router",
+			WorkingDir:   "/Users/conchi/workforce/my_github_workforce/agent-context-router",
 			TimeoutSec:   60,
 		},
 		{
@@ -806,10 +806,10 @@ echo "✅ Agent Context Router 所有后台进程已安全停止！"`,
 			Content: `#!/bin/zsh
 set -e
 echo "🔄 正在重启 Agent Context Router 原生服务栈..."
-cd /Users/conchi/workforce/python_workforce/agent-context-router
+cd /Users/conchi/workforce/my_github_workforce/agent-context-router
 /bin/zsh ./scripts/restart-native-stack.sh
 echo "✅ Agent Context Router 原生服务栈重启完成！"`,
-			WorkingDir:   "/Users/conchi/workforce/python_workforce/agent-context-router",
+			WorkingDir:   "/Users/conchi/workforce/my_github_workforce/agent-context-router",
 			TimeoutSec:   120,
 		},
 		{
@@ -821,9 +821,9 @@ echo "✅ Agent Context Router 原生服务栈重启完成！"`,
 			ExecMode:     "direct",
 			Content: `#!/bin/zsh
 echo "🔍 正在巡检 Agent Context Router 原生服务状态..."
-cd /Users/conchi/workforce/python_workforce/agent-context-router
+cd /Users/conchi/workforce/my_github_workforce/agent-context-router
 /bin/zsh ./scripts/status-native-stack.sh`,
-			WorkingDir:   "/Users/conchi/workforce/python_workforce/agent-context-router",
+			WorkingDir:   "/Users/conchi/workforce/my_github_workforce/agent-context-router",
 			TimeoutSec:   30,
 		},
 		{
@@ -1634,6 +1634,9 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 	// Clean up removed website items
 	gdb.Where("section = ? AND title IN (?)", "website", []string{"Personal Utils 本地服务", "GitHub 代码协作平台", "GitLab 代码管理平台"}).Delete(&model.DashboardItem{})
 
+	// Update WatchSieve URL to host mapped port 47863
+	gdb.Model(&model.DashboardItem{}).Where("section = ? AND title = ?", "website", "WatchSieve 网站抓取与监控平台").Update("content", "http://127.0.0.1:47863")
+
 	var count int64
 	gdb.Model(&model.DashboardItem{}).Count(&count)
 	if count > 0 {
@@ -1664,7 +1667,7 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		{Section: "website", Title: "股票量化交易前端 (Stock Vue)", Content: "http://localhost:6021/", SortOrder: 20, WorkspaceSlug: "stock_workforce"},
 		{Section: "website", Title: "股票调度大盘 (Stock Schedule Web)", Content: "http://localhost:6022/", SortOrder: 21, WorkspaceSlug: "stock_workforce"},
 		{Section: "website", Title: "共享配置中心 (Config Center Web)", Content: "http://127.0.0.1:18527/", SortOrder: 22, WorkspaceSlug: "shared-config-center"},
-		{Section: "website", Title: "WatchSieve 网站抓取与监控平台", Content: "http://localhost:8000/", SortOrder: 23, WorkspaceSlug: "python_workforce"},
+		{Section: "website", Title: "WatchSieve 网站抓取与监控平台", Content: "http://127.0.0.1:47863", SortOrder: 23, WorkspaceSlug: "python_workforce"},
 		{Section: "website", Title: "SnailJob 任务调度中心", Content: "http://localhost:18080/snail-job/#/login", SortOrder: 24, WorkspaceSlug: ""},
 		{Section: "website", Title: "Uptime Kuma 服务监控大盘", Content: "http://127.0.0.1:19301/", SortOrder: 25, WorkspaceSlug: ""},
 		{Section: "website", Title: "Grok2API Web 管理后台", Content: "http://127.0.0.1:37821/", SortOrder: 26, WorkspaceSlug: ""},
@@ -1759,31 +1762,31 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		{
 			Section:   "command",
 			Title:     "Agent Context Router 状态巡检",
-			Content:   "zsh /Users/conchi/workforce/python_workforce/agent-context-router/scripts/status-native-stack.sh",
+			Content:   "zsh /Users/conchi/workforce/my_github_workforce/agent-context-router/scripts/status-native-stack.sh",
 			SortOrder: 2,
 		},
 		{
 			Section:   "command",
 			Title:     "Agent Context Router 一键启动",
-			Content:   "zsh /Users/conchi/workforce/python_workforce/agent-context-router/scripts/start-native-stack.sh",
+			Content:   "zsh /Users/conchi/workforce/my_github_workforce/agent-context-router/scripts/start-native-stack.sh",
 			SortOrder: 3,
 		},
 		{
 			Section:   "command",
 			Title:     "Agent Context Router 一键重启",
-			Content:   "zsh /Users/conchi/workforce/python_workforce/agent-context-router/scripts/restart-native-stack.sh",
+			Content:   "zsh /Users/conchi/workforce/my_github_workforce/agent-context-router/scripts/restart-native-stack.sh",
 			SortOrder: 4,
 		},
 		{
 			Section:   "command",
 			Title:     "Agent Context Router 一键停止",
-			Content:   "zsh /Users/conchi/workforce/python_workforce/agent-context-router/scripts/stop-native-stack.sh",
+			Content:   "zsh /Users/conchi/workforce/my_github_workforce/agent-context-router/scripts/stop-native-stack.sh",
 			SortOrder: 5,
 		},
 		{
 			Section:   "command",
 			Title:     "Agent Context Router 依赖环境自检",
-			Content:   "zsh /Users/conchi/workforce/python_workforce/agent-context-router/scripts/bootstrap-native.sh",
+			Content:   "zsh /Users/conchi/workforce/my_github_workforce/agent-context-router/scripts/bootstrap-native.sh",
 			SortOrder: 6,
 		},
 		{
@@ -1827,7 +1830,7 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		{
 			Section:   "document",
 			Title:     "Agent Context Router 工程目录",
-			Content:   "/Users/conchi/workforce/python_workforce/agent-context-router",
+			Content:   "/Users/conchi/workforce/my_github_workforce/agent-context-router",
 			SortOrder: 3,
 		},
 		{
@@ -1853,28 +1856,28 @@ func seedDefaultDashboardItems(gdb *gorm.DB) {
 		{
 			Section:   "script",
 			Title:     "Agent Context Router 状态巡检",
-			Content:   "zsh /Users/conchi/workforce/python_workforce/agent-context-router/scripts/status-native-stack.sh",
+			Content:   "zsh /Users/conchi/workforce/my_github_workforce/agent-context-router/scripts/status-native-stack.sh",
 			Extra:     "一键检查 Agent Context Router 前后端、Runner 及 Docker Engine 健康在线状态",
 			SortOrder: 1,
 		},
 		{
 			Section:   "script",
 			Title:     "Agent Context Router 一键启动",
-			Content:   "zsh /Users/conchi/workforce/python_workforce/agent-context-router/scripts/start-native-stack.sh",
+			Content:   "zsh /Users/conchi/workforce/my_github_workforce/agent-context-router/scripts/start-native-stack.sh",
 			Extra:     "一键拉起 Agent Context Router 原生服务栈 (Backend 49173, Frontend 49175) 及本地 Runner",
 			SortOrder: 2,
 		},
 		{
 			Section:   "script",
 			Title:     "Agent Context Router 一键重启",
-			Content:   "zsh /Users/conchi/workforce/python_workforce/agent-context-router/scripts/restart-native-stack.sh",
+			Content:   "zsh /Users/conchi/workforce/my_github_workforce/agent-context-router/scripts/restart-native-stack.sh",
 			Extra:     "平滑重启 Agent Context Router 原生服务栈与 Runner",
 			SortOrder: 3,
 		},
 		{
 			Section:   "script",
 			Title:     "Agent Context Router 一键停止",
-			Content:   "zsh /Users/conchi/workforce/python_workforce/agent-context-router/scripts/stop-native-stack.sh",
+			Content:   "zsh /Users/conchi/workforce/my_github_workforce/agent-context-router/scripts/stop-native-stack.sh",
 			Extra:     "安全停止 Agent Context Router 原生服务进程与 Host Runner",
 			SortOrder: 4,
 		},
@@ -2036,10 +2039,10 @@ func seedDefaultServiceConfigs(gdb *gorm.DB) {
 			ServiceType:    "host_process",
 			ProcessPattern: "context_router.main",
 			Port:           49173,
-			ConfigPath:     "/Users/conchi/workforce/python_workforce/agent-context-router/.env.native.local",
-			StartCmd:       "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/start-native-stack.sh",
-			StopCmd:        "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/stop-native-stack.sh",
-			RestartCmd:     "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/restart-native-stack.sh",
+			ConfigPath:     "/Users/conchi/workforce/my_github_workforce/agent-context-router/.env.native.local",
+			StartCmd:       "cd /Users/conchi/workforce/my_github_workforce/agent-context-router && /bin/zsh ./scripts/start-native-stack.sh",
+			StopCmd:        "cd /Users/conchi/workforce/my_github_workforce/agent-context-router && /bin/zsh ./scripts/stop-native-stack.sh",
+			RestartCmd:     "cd /Users/conchi/workforce/my_github_workforce/agent-context-router && /bin/zsh ./scripts/restart-native-stack.sh",
 			SortOrder:      11,
 		},
 		{
@@ -2049,10 +2052,10 @@ func seedDefaultServiceConfigs(gdb *gorm.DB) {
 			ServiceType:    "host_process",
 			ProcessPattern: "next-server",
 			Port:           49175,
-			ConfigPath:     "/Users/conchi/workforce/python_workforce/agent-context-router/frontend/package.json",
-			StartCmd:       "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/start-native-stack.sh",
-			StopCmd:        "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/stop-native-stack.sh",
-			RestartCmd:     "cd /Users/conchi/workforce/python_workforce/agent-context-router && /bin/zsh ./scripts/restart-native-stack.sh",
+			ConfigPath:     "/Users/conchi/workforce/my_github_workforce/agent-context-router/frontend/package.json",
+			StartCmd:       "cd /Users/conchi/workforce/my_github_workforce/agent-context-router && /bin/zsh ./scripts/start-native-stack.sh",
+			StopCmd:        "cd /Users/conchi/workforce/my_github_workforce/agent-context-router && /bin/zsh ./scripts/stop-native-stack.sh",
+			RestartCmd:     "cd /Users/conchi/workforce/my_github_workforce/agent-context-router && /bin/zsh ./scripts/restart-native-stack.sh",
 			SortOrder:      12,
 		},
 		{
@@ -2108,7 +2111,7 @@ func seedDefaultProjectDirectories(gdb *gorm.DB) {
 				Name:        "Agent Context Router",
 				Slug:        "agent-context-router",
 				Category:    "python_workforce",
-				Path:        "/Users/conchi/workforce/python_workforce/agent-context-router",
+				Path:        "/Users/conchi/workforce/my_github_workforce/agent-context-router",
 				Description: "工作空间上下文路由器与 AI Agent 工具网关，提供多项目文档树检索、派生分块与 10 个标准 MCP 工具",
 				Icon:        "bot",
 				SortOrder:   1,
@@ -2123,7 +2126,7 @@ func seedDefaultProjectDirectories(gdb *gorm.DB) {
 					Port:         49173,
 					InternalPort: 8000,
 					Description:  "核心上下文路由器后端，提供 Workspace 映射、PostgreSQL 派生分块与 10 个标准 MCP 工具端点",
-					StartCmd:     "cd /Users/conchi/workforce/python_workforce/agent-context-router/backend && uv run uvicorn context_router.main:create_app --factory --port 8000",
+					StartCmd:     "cd /Users/conchi/workforce/my_github_workforce/agent-context-router/backend && uv run uvicorn context_router.main:create_app --factory --port 8000",
 					DevCmd:       "docker compose up -d backend",
 					Endpoints:    `[{"label":"Swagger Docs","url":"http://127.0.0.1:49173/docs"},{"label":"MCP Endpoint","url":"http://127.0.0.1:49173/mcp"},{"label":"Health Check","url":"http://127.0.0.1:49173/health"}]`,
 					SortOrder:    1,
@@ -2137,7 +2140,7 @@ func seedDefaultProjectDirectories(gdb *gorm.DB) {
 					Port:         49175,
 					InternalPort: 3000,
 					Description:  "工作空间与项目关系管理控制台、MCP 链路调用与文档检索可视化交互面板",
-					StartCmd:     "cd /Users/conchi/workforce/python_workforce/agent-context-router/frontend && npm run dev -- --port 3000",
+					StartCmd:     "cd /Users/conchi/workforce/my_github_workforce/agent-context-router/frontend && npm run dev -- --port 3000",
 					DevCmd:       "docker compose up -d frontend",
 					Endpoints:    `[{"label":"Web 控制台","url":"http://127.0.0.1:49175"}]`,
 					SortOrder:    2,
@@ -2149,7 +2152,7 @@ func seedDefaultProjectDirectories(gdb *gorm.DB) {
 				Name:        "Personal Utils 本地运维工具箱",
 				Slug:        "personal-utils",
 				Category:    "go_workforce",
-				Path:        "/Users/conchi/workforce/go_workforce/personal_utils",
+				Path:        "/Users/conchi/workforce/my_github_workforce/personal_utils",
 				Description: "全功能本地开发与运维聚合平台，提供容器管理、笔记管理、敏捷请求、数据库迁移脚本与配置管理",
 				Icon:        "wrench",
 				SortOrder:   2,
@@ -2164,7 +2167,7 @@ func seedDefaultProjectDirectories(gdb *gorm.DB) {
 					Port:         39888,
 					InternalPort: 39888,
 					Description:  "核心 REST API 引擎，驱动 Docker/MinIO/PostgreSQL 状态探测与脚本执行",
-					StartCmd:     "cd /Users/conchi/workforce/go_workforce/personal_utils/server && go run ./cmd/server/main.go",
+					StartCmd:     "cd /Users/conchi/workforce/my_github_workforce/personal_utils/server && go run ./cmd/server/main.go",
 					DevCmd:       "go run ./cmd/server/main.go",
 					Endpoints:    `[{"label":"API 基础地址","url":"http://127.0.0.1:39888/api/health"}]`,
 					SortOrder:    1,
@@ -2178,7 +2181,7 @@ func seedDefaultProjectDirectories(gdb *gorm.DB) {
 					Port:         39889,
 					InternalPort: 39889,
 					Description:  "现代化极客暗黑风 Web 客户端与实时看板控制台",
-					StartCmd:     "cd /Users/conchi/workforce/go_workforce/personal_utils/web && npm run dev",
+					StartCmd:     "cd /Users/conchi/workforce/my_github_workforce/personal_utils/web && npm run dev",
 					DevCmd:       "npm run dev",
 					Endpoints:    `[{"label":"Web 界面","url":"http://127.0.0.1:39889"}]`,
 					SortOrder:    2,
