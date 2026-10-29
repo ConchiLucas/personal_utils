@@ -36,7 +36,7 @@ func getDatabaseDSN() string {
 	host := getEnv("APP_DB_HOST", "127.0.0.1")
 	port := getEnv("APP_DB_PORT", "5432")
 	user := getEnv("APP_DB_USER", "conchi")
-	pass := getEnv("APP_DB_PASSWORD", "conchi123456")
+	pass := getEnv("APP_DB_PASSWORD", "")
 	name := getEnv("APP_DB_NAME", "personal_utils")
 	cfg := getEnv("APP_DB_CONFIG", "sslmode=disable")
 

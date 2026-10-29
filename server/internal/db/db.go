@@ -1,13 +1,10 @@
 package db
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
-	"strings"
 	"time"
 
-	"github.com/glebarez/sqlite"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -26,24 +23,7 @@ func Init(dsn string) (*gorm.DB, error) {
 	})
 
 	if err != nil {
-		log.Printf("[DB] Direct connect failed: %v. Checking if database needs creation...", err)
-		// Check if error is unknown database, try connecting to default 'postgres' database to create personal_utils
-		if err = ensurePostgresDB(dsn); err == nil {
-			gdb, err = gorm.Open(postgres.Open(dsn), &gorm.Config{
-				Logger: logger.Default.LogMode(logger.Warn),
-			})
-		}
-	}
-
-	// Fallback to local SQLite if Postgres is unavailable
-	if err != nil {
-		log.Printf("[DB] PostgreSQL is currently unreachable (%v). Fallback to embedded SQLite database.", err)
-		gdb, err = gorm.Open(sqlite.Open("personal_utils.db"), &gorm.Config{
-			Logger: logger.Default.LogMode(logger.Warn),
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to open fallback sqlite: %w", err)
-		}
+		return nil, fmt.Errorf("connect to PostgreSQL: %w", err)
 	}
 
 	// Configure connection pool
@@ -84,27 +64,6 @@ func Init(dsn string) (*gorm.DB, error) {
 	DB = gdb
 	log.Printf("[DB] Database initialized successfully (Dialect: %s)", gdb.Dialector.Name())
 	return gdb, nil
-}
-
-func ensurePostgresDB(originalDSN string) error {
-	// Try connecting with user/password to 'postgres' database
-	adminDSN := strings.Replace(originalDSN, "dbname=personal_utils", "dbname=postgres", 1)
-	if adminDSN == originalDSN {
-		adminDSN = originalDSN + " dbname=postgres"
-	}
-
-	tempDB, err := sql.Open("pgx", adminDSN)
-	if err != nil {
-		return err
-	}
-	defer tempDB.Close()
-
-	// Create database if not exists
-	_, err = tempDB.Exec("CREATE DATABASE personal_utils")
-	if err != nil && !strings.Contains(err.Error(), "already exists") {
-		return err
-	}
-	return nil
 }
 
 func seedDefaultData(gdb *gorm.DB) {
@@ -777,8 +736,8 @@ cd /Users/conchi/workforce/my_github_workforce/agent-context-router
 echo "✅ Agent Context Router 原生服务栈已启动就绪！"
 echo "前端控制台: http://127.0.0.1:49175"
 echo "后端API/MCP: http://127.0.0.1:49173"`,
-			WorkingDir:   "/Users/conchi/workforce/my_github_workforce/agent-context-router",
-			TimeoutSec:   120,
+			WorkingDir: "/Users/conchi/workforce/my_github_workforce/agent-context-router",
+			TimeoutSec: 120,
 		},
 		{
 			CategoryID:   opsCat.ID,
@@ -793,8 +752,8 @@ echo "🛑 正在停止 Agent Context Router 原生服务栈..."
 cd /Users/conchi/workforce/my_github_workforce/agent-context-router
 /bin/zsh ./scripts/stop-native-stack.sh
 echo "✅ Agent Context Router 所有后台进程已安全停止！"`,
-			WorkingDir:   "/Users/conchi/workforce/my_github_workforce/agent-context-router",
-			TimeoutSec:   60,
+			WorkingDir: "/Users/conchi/workforce/my_github_workforce/agent-context-router",
+			TimeoutSec: 60,
 		},
 		{
 			CategoryID:   opsCat.ID,
@@ -809,8 +768,8 @@ echo "🔄 正在重启 Agent Context Router 原生服务栈..."
 cd /Users/conchi/workforce/my_github_workforce/agent-context-router
 /bin/zsh ./scripts/restart-native-stack.sh
 echo "✅ Agent Context Router 原生服务栈重启完成！"`,
-			WorkingDir:   "/Users/conchi/workforce/my_github_workforce/agent-context-router",
-			TimeoutSec:   120,
+			WorkingDir: "/Users/conchi/workforce/my_github_workforce/agent-context-router",
+			TimeoutSec: 120,
 		},
 		{
 			CategoryID:   opsCat.ID,
@@ -823,34 +782,34 @@ echo "✅ Agent Context Router 原生服务栈重启完成！"`,
 echo "🔍 正在巡检 Agent Context Router 原生服务状态..."
 cd /Users/conchi/workforce/my_github_workforce/agent-context-router
 /bin/zsh ./scripts/status-native-stack.sh`,
-			WorkingDir:   "/Users/conchi/workforce/my_github_workforce/agent-context-router",
-			TimeoutSec:   30,
+			WorkingDir: "/Users/conchi/workforce/my_github_workforce/agent-context-router",
+			TimeoutSec: 30,
 		},
 		{
-			CategoryID:   opsCat.ID,
-			CategorySlug: opsCat.Slug,
-			Name:         "Host Runner 宿主机执行器守护管理 (start-host-runner.sh)",
-			Description:  "负责 Context Router 宿主机执行器的前后台生命周期控制 (支持 start / status / stop / restart)",
-			ScriptType:   "bash",
-			ExecMode:     "dynamic",
-			ParamsSchema: `[{"key":"ACTION","label":"管理动作 (status巡检 | start启动 | restart重启 | stop停止)","type":"select","options":["status","start","restart","stop"],"default":"status","required":true}]`,
+			CategoryID:    opsCat.ID,
+			CategorySlug:  opsCat.Slug,
+			Name:          "Host Runner 宿主机执行器守护管理 (start-host-runner.sh)",
+			Description:   "负责 Context Router 宿主机执行器的前后台生命周期控制 (支持 start / status / stop / restart)",
+			ScriptType:    "bash",
+			ExecMode:      "dynamic",
+			ParamsSchema:  `[{"key":"ACTION","label":"管理动作 (status巡检 | start启动 | restart重启 | stop停止)","type":"select","options":["status","start","restart","stop"],"default":"status","required":true}]`,
 			DefaultParams: `{"ACTION":"status"}`,
 			Content: `#!/usr/bin/env bash
 set -euo pipefail
 ACTION="${ACTION:-status}"
 echo "⚙️ 正在执行 Host Runner 管理动作: ${ACTION}"
 /Users/conchi/script/start-host-runner.sh "${ACTION}"`,
-			WorkingDir:   "/Users/conchi/script",
-			TimeoutSec:   120,
+			WorkingDir: "/Users/conchi/script",
+			TimeoutSec: 120,
 		},
 		{
-			CategoryID:   opsCat.ID,
-			CategorySlug: opsCat.Slug,
-			Name:         "攀枝花宿主机环境与微服务代理保障 (ensure-panzhihua-host-runtime.sh)",
-			Description:  "幂等巡检与保障本地 Docker 共享网络、微服务与中间件容器、数据库代理及本地 Nginx 网关",
-			ScriptType:   "bash",
-			ExecMode:     "dynamic",
-			ParamsSchema: `[{"key":"ACTION","label":"执行动作 (status巡检 | ensure保障恢复)","type":"select","options":["status","ensure"],"default":"status","required":true},{"key":"ENVIRONMENT","label":"运行环境 (local | test | uat)","type":"select","options":["local","test","uat"],"default":"local","required":true}]`,
+			CategoryID:    opsCat.ID,
+			CategorySlug:  opsCat.Slug,
+			Name:          "攀枝花宿主机环境与微服务代理保障 (ensure-panzhihua-host-runtime.sh)",
+			Description:   "幂等巡检与保障本地 Docker 共享网络、微服务与中间件容器、数据库代理及本地 Nginx 网关",
+			ScriptType:    "bash",
+			ExecMode:      "dynamic",
+			ParamsSchema:  `[{"key":"ACTION","label":"执行动作 (status巡检 | ensure保障恢复)","type":"select","options":["status","ensure"],"default":"status","required":true},{"key":"ENVIRONMENT","label":"运行环境 (local | test | uat)","type":"select","options":["local","test","uat"],"default":"local","required":true}]`,
 			DefaultParams: `{"ACTION":"status","ENVIRONMENT":"local"}`,
 			Content: `#!/usr/bin/env bash
 set -euo pipefail
@@ -858,8 +817,8 @@ ACTION="${ACTION:-status}"
 ENVIRONMENT="${ENVIRONMENT:-local}"
 echo "🛡️ 正在执行攀枝花宿主机运行保障: action=${ACTION} environment=${ENVIRONMENT}"
 /Users/conchi/script/ensure-panzhihua-host-runtime.sh "${ACTION}" --environment "${ENVIRONMENT}"`,
-			WorkingDir:   "/Users/conchi/script",
-			TimeoutSec:   300,
+			WorkingDir: "/Users/conchi/script",
+			TimeoutSec: 300,
 		},
 		// ==========================================
 		// 🐬 MySQL Migration Scripts (4 workflows)

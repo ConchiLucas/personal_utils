@@ -8,6 +8,12 @@ BACKEND_PORT=39888
 FRONTEND_PORT=39889
 LAUNCH_DOMAIN="gui/$(id -u)"
 
+if [[ -f "$PROJECT_DIR/.env.local" ]]; then
+  set -a
+  source "$PROJECT_DIR/.env.local"
+  set +a
+fi
+
 mkdir -p "$RUN_DIR"
 
 is_listening() {
@@ -18,7 +24,7 @@ wait_for_url() {
   local name="$1"
   local url="$2"
 
-  for _ in {1..40}; do
+  for _ in {1..120}; do
     if curl --silent --fail --max-time 1 "$url" >/dev/null 2>&1; then
       echo "[OK] $name 已启动：$url"
       return 0
@@ -81,6 +87,13 @@ start_backend() {
     '  <key>Label</key><string>com.personal-utils.backend</string>' \
     "  <key>ProgramArguments</key><array><string>$RUN_DIR/backend</string></array>" \
     "  <key>WorkingDirectory</key><string>$PROJECT_DIR/server</string>" \
+    "$(python3 - <<'ENVXML'
+import os
+from xml.sax.saxutils import escape
+keys = ['DATABASE_URL', 'APP_DSN', 'APP_DB_HOST', 'APP_DB_PORT', 'APP_DB_USER', 'APP_DB_PASSWORD', 'APP_DB_NAME', 'APP_DB_CONFIG']
+print('<key>EnvironmentVariables</key><dict>' + ''.join('<key>'+key+'</key><string>'+escape(os.environ[key])+'</string>' for key in keys if key in os.environ) + '</dict>')
+ENVXML
+)" \
     '  <key>RunAtLoad</key><true/>' \
     '  <key>KeepAlive</key><true/>' \
     "  <key>StandardOutPath</key><string>$RUN_DIR/backend.log</string>" \
@@ -88,6 +101,7 @@ start_backend() {
     '</dict>' \
     '</plist>' >"$RUN_DIR/backend.plist"
 
+  chmod 600 "$RUN_DIR/backend.plist"
   launch_service "com.personal-utils.backend" "$RUN_DIR/backend.plist"
 
   wait_for_url backend "http://127.0.0.1:$BACKEND_PORT/api/health"
@@ -171,10 +185,9 @@ restart_all() {
 
   # Restart backend
   if launchctl print "$LAUNCH_DOMAIN/com.personal-utils.backend" >/dev/null 2>&1; then
-    launchctl kickstart -k "$LAUNCH_DOMAIN/com.personal-utils.backend"
-  else
-    start_backend
+    launchctl bootout "$LAUNCH_DOMAIN/com.personal-utils.backend"
   fi
+  start_backend
   wait_for_url backend "http://127.0.0.1:$BACKEND_PORT/api/health"
 
   # Restart frontend
